@@ -50,9 +50,11 @@ jobs:
         run: |
           cd "$PROJECT_DIR"
           mkdir -p build/web
-          echo "== First pass: import resources (errors here are expected on a fresh checkout) =="
+          echo "== Import pass: headless editor imports ALL resources so dynamically-loaded item icons get packed =="
+          timeout 300 godot --headless --editor --quit-after 1000 || true
+          echo "== Export pass 1 (also imports anything missed) =="
           godot --headless --export-release "Web" build/web/index.html || true
-          echo "== Second pass: real export =="
+          echo "== Export pass 2 (final) =="
           godot --headless --export-release "Web" build/web/index.html
           echo "== Output =="
           ls -la build/web
