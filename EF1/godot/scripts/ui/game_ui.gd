@@ -2138,13 +2138,85 @@ func _set_combat_style(style_id: String) -> void:
 
 func _show_prayer() -> void:
 	_add_stat_row("Prayer points", "%d / %d" % [prayer, max_prayer])
-	_add_prayer_button("Burst of Strength", "+2 melee damage", 1)
-	_add_prayer_button("Sharp Eye", "+2 melee accuracy", 2)
-	_add_prayer_button("Thick Skin", "+2 melee defence", 3)
-	_add_prayer_button("Clarity of Thought", "+4 melee accuracy", 7)
-	_add_prayer_button("Steel Skin", "+5 melee defence", 10)
-	_add_prayer_button("Ultimate Strength", "+5 melee damage", 12)
-	_add_prayer_button("Protect from Melee", "Halves incoming melee damage", 15)
+	var prayers := [
+		["Burst of Strength", "💪", "+2 melee damage", 1],
+		["Sharp Eye", "👁", "+2 melee accuracy", 2],
+		["Thick Skin", "🛡", "+2 melee defence", 3],
+		["Clarity of Thought", "🧠", "+4 melee accuracy", 7],
+		["Steel Skin", "🪨", "+5 melee defence", 10],
+		["Ultimate Strength", "⚡", "+5 melee damage", 12],
+		["Protect from Melee", "✋", "Halves incoming melee damage", 15],
+	]
+	var grid := GridContainer.new()
+	grid.name = "PrayerGrid"
+	grid.columns = 2
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	content.add_child(grid)
+	for entry in prayers:
+		grid.add_child(_make_prayer_tile(entry[0], entry[1], entry[2], int(entry[3])))
+
+
+func _make_prayer_tile(
+	prayer_name: String,
+	icon: String,
+	description: String,
+	required_level: int
+) -> Button:
+	var unlocked: bool = skills["Prayer"] >= required_level
+	var active: bool = active_prayers.get(prayer_name, false)
+	var tile := Button.new()
+	tile.name = "PrayerTile_%s" % prayer_name
+	tile.toggle_mode = true
+	tile.button_pressed = active
+	tile.disabled = not unlocked
+	tile.custom_minimum_size = Vector2(0.0, 78.0)
+	tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tile.tooltip_text = "%s\n%s\nRequires Prayer %d" % [prayer_name, description, required_level]
+	tile.add_theme_stylebox_override("normal", _choice_style(active))
+	tile.add_theme_stylebox_override("hover", _panel_style(Color("2a2416")))
+	tile.add_theme_stylebox_override("pressed", _choice_style(true))
+	tile.add_theme_stylebox_override("disabled", _panel_style(Color("14130d")))
+	if unlocked:
+		tile.pressed.connect(_toggle_prayer.bind(prayer_name))
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 4)
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_theme_constant_override("separation", 1)
+	tile.add_child(box)
+	var icon_label := Label.new()
+	icon_label.text = icon
+	icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icon_label.add_theme_font_size_override("font_size", 20)
+	icon_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(icon_label)
+	var name_label := Label.new()
+	name_label.text = prayer_name
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.add_theme_font_size_override("font_size", 11)
+	name_label.add_theme_color_override(
+		"font_color", Color("e7d39d") if unlocked else Color("6d6650")
+	)
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(name_label)
+	var state_label := Label.new()
+	state_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	state_label.add_theme_font_size_override("font_size", 10)
+	state_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not unlocked:
+		state_label.text = "Prayer Lv %d" % required_level
+		state_label.add_theme_color_override("font_color", Color("b06a5a"))
+	elif active:
+		state_label.text = "ON"
+		state_label.add_theme_color_override("font_color", Color("ffe6ab"))
+	else:
+		state_label.text = "OFF"
+		state_label.add_theme_color_override("font_color", Color("8a8266"))
+	box.add_child(state_label)
+	return tile
 
 
 func _show_journal() -> void:
