@@ -48,15 +48,15 @@ jobs:
 
       - name: Export Web build
         run: |
-          mkdir -p "${BUILD_DIR#EF1/godot/}" || true
           cd "$PROJECT_DIR"
           mkdir -p build/web
-          echo "== First pass: import resources (may report errors, that's expected) =="
+          echo "== First pass: import resources (errors here are expected on a fresh checkout) =="
           godot --headless --export-release "Web" build/web/index.html || true
           echo "== Second pass: real export =="
           godot --headless --export-release "Web" build/web/index.html
           echo "== Output =="
           ls -la build/web
+          test -f build/web/index.html || { echo "ERROR: export produced no index.html — check the log above"; exit 1; }
 
       - name: Disable Jekyll (serve files as-is)
         run: touch "$BUILD_DIR/.nojekyll"
