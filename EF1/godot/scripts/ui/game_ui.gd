@@ -766,16 +766,9 @@ func _build_sidebar() -> void:
 	tabs.clip_contents = true
 	tabs.add_theme_constant_override("separation", 1)
 	shell.add_child(tabs)
-	var tab_icons := {
-		"Pack": "🎒",
-		"Skills": "📊",
-		"Gear": "⚔",
-		"Prayer": "✦",
-		"Journal": "📖",
-	}
 	for tab_name in ["Pack", "Skills", "Gear", "Prayer", "Journal"]:
 		var button := Button.new()
-		button.text = "%s\n%s" % [tab_icons[tab_name], tab_name]
+		button.text = tab_name
 		button.custom_minimum_size = Vector2(0.0, 52.0)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.clip_text = true
@@ -1864,26 +1857,26 @@ func _fit_inventory_slots(grid: GridContainer) -> void:
 
 func _show_skills() -> void:
 	var skill_icons := {
-		"Attack": "⚔️",
-		"Strength": "💪",
-		"Defence": "🛡️",
-		"Ranged": "🎯",
-		"Magic": "✨",
-		"Prayer": "🙏",
-		"Hitpoints": "❤️",
-		"Fishing": "🎣",
-		"Cooking": "🍳",
-		"Woodcutting": "🪓",
-		"Firemaking": "🔥",
-		"Mining": "⛏️",
-		"Smithing": "🔨",
-		"Farming": "🌾",
-		"Herblore": "🧪",
-		"Crafting": "🧵",
-		"Fletching": "🏹",
-		"Slayer": "💀",
-		"Hunter": "🐾",
-		"Thieving": "🗝️",
+		"Attack": "ATT",
+		"Strength": "STR",
+		"Defence": "DEF",
+		"Ranged": "RNG",
+		"Magic": "MAG",
+		"Prayer": "PRAY",
+		"Hitpoints": "HP",
+		"Fishing": "FISH",
+		"Cooking": "COOK",
+		"Woodcutting": "WC",
+		"Firemaking": "FM",
+		"Mining": "MINE",
+		"Smithing": "SMTH",
+		"Farming": "FARM",
+		"Herblore": "HERB",
+		"Crafting": "CRFT",
+		"Fletching": "FLET",
+		"Slayer": "SLAY",
+		"Hunter": "HUNT",
+		"Thieving": "THV",
 	}
 	var grid := GridContainer.new()
 	grid.name = "SkillGrid"
@@ -2139,13 +2132,13 @@ func _set_combat_style(style_id: String) -> void:
 func _show_prayer() -> void:
 	_add_stat_row("Prayer points", "%d / %d" % [prayer, max_prayer])
 	var prayers := [
-		["Burst of Strength", "💪", "+2 melee damage", 1],
-		["Sharp Eye", "👁", "+2 melee accuracy", 2],
-		["Thick Skin", "🛡", "+2 melee defence", 3],
-		["Clarity of Thought", "🧠", "+4 melee accuracy", 7],
-		["Steel Skin", "🪨", "+5 melee defence", 10],
-		["Ultimate Strength", "⚡", "+5 melee damage", 12],
-		["Protect from Melee", "✋", "Halves incoming melee damage", 15],
+		["Burst of Strength", "+DMG", "+2 melee damage", 1],
+		["Sharp Eye", "+ACC", "+2 melee accuracy", 2],
+		["Thick Skin", "+DEF", "+2 melee defence", 3],
+		["Clarity of Thought", "+ACC", "+4 melee accuracy", 7],
+		["Steel Skin", "+DEF", "+5 melee defence", 10],
+		["Ultimate Strength", "+DMG", "+5 melee damage", 12],
+		["Protect from Melee", "PROT", "Halves incoming melee damage", 15],
 	]
 	var grid := GridContainer.new()
 	grid.name = "PrayerGrid"
@@ -2189,7 +2182,10 @@ func _make_prayer_tile(
 	var icon_label := Label.new()
 	icon_label.text = icon
 	icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	icon_label.add_theme_font_size_override("font_size", 20)
+	icon_label.add_theme_font_size_override("font_size", 15)
+	icon_label.add_theme_color_override(
+		"font_color", Color("d6b84f") if unlocked else Color("6d6650")
+	)
 	icon_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(icon_label)
 	var name_label := Label.new()
