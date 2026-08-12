@@ -43,7 +43,7 @@ environment = SubResource("Environment")
 [node name="Sun" type="DirectionalLight3D" parent="."]
 rotation_degrees = Vector3(-52, -28, 0)
 light_energy = 1.1
-shadow_enabled = true
+shadow_enabled = false
 
 [node name="Ground" type="StaticBody3D" parent="."]
 position = Vector3(0, -0.14, 0)
