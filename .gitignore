@@ -1,0 +1,40 @@
+# ===== Emberfall .gitignore =====
+
+# ---- OS / editor junk ----
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp
+
+# ---- Node ----
+node_modules/
+
+# ---- Local tool config (machine-specific) ----
+**/settings.local.json
+
+# ---- Godot: regenerable import cache & machine-local data ----
+# (Godot rebuilds these on open; committing them creates massive noisy diffs)
+.godot/
+.runtime/
+builds/
+
+# ---- Godot throwaway editor/test profiles & userdata ----
+.godot-appdata/
+.godot-localappdata/
+.godot_test_appdata/
+.godot_test_fresh_appdata/
+.godot_test_fresh_local/
+EF1/godot/Godot/
+EF1/godot/app_userdata/
+EF1/godot/export_templates/
+
+# ---- Backup duplicate (git history is the backup now) ----
+EF1_BACKUP-7-26/
+
+# ---- local web/export build output (CI rebuilds this) ----
+build/
+EF1/godot/build/
+
+# ---- validation / run logs ----
+godot_validate.log

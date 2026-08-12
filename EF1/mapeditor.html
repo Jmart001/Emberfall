@@ -1,0 +1,1106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Emberfall Map Editor</title>
+<style>
+  :root { --bg:#15130d; --panel:#211d15; --edge:#4c3f26; --gold:#e1b557; --ink:#ddd0aa; --dim:#9a8e6f; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #100e09; color: var(--ink); font: 13px 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+  #app { display: grid; grid-template-columns: 240px 1fr; height: 100vh; }
+  #side { background: var(--panel); border-right: 3px ridge #8c7040; overflow-y: auto; padding: 10px; }
+  #side h1 { font: 700 17px Georgia, serif; color: var(--gold); margin: 0 0 4px; }
+  #side h2 { font: 700 11px sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); margin: 13px 0 6px; border-bottom: 1px solid var(--edge); padding-bottom: 3px; }
+  .row { display: flex; flex-wrap: wrap; gap: 4px; }
+  button, select { font: inherit; }
+  .tbtn, .ebtn, .tool, .hbtn { background: #17130d; color: var(--ink); border: 1px solid var(--edge); border-radius: 4px; padding: 5px 7px; cursor: pointer; }
+  .tbtn:hover, .ebtn:hover, .tool:hover, .hbtn:hover { border-color: var(--gold); }
+  .tbtn.on, .ebtn.on, .tool.on, .hbtn.on { background: #3a2f19; border-color: var(--gold); color: #ffe6ab; box-shadow: inset 0 -2px #d9af4d; }
+  .sw { display:inline-block; width:12px; height:12px; border-radius:2px; margin-right:5px; vertical-align:-1px; border:1px solid #0006; }
+  .tbtn, .ebtn { display:flex; align-items:center; width:calc(50% - 2px); font-size:12px; }
+  .tool { flex:1; text-align:center; min-width:50px; }
+  #heightPresets { display:flex; flex-wrap:wrap; gap:4px; margin:4px 0; }
+  #heightPresets .hbtn { flex:0 0 auto; min-width:42px; text-align:center; font-size:12px; padding:4px 6px; }
+  label.ctl { display:flex; align-items:center; gap:6px; margin:5px 0; font-size:12px; }
+  input[type=range]{ flex:1; }
+  .big { width:100%; padding:8px; margin-top:6px; background:#2a2417; color:#ffe6ab; border:1px solid var(--gold); border-radius:5px; cursor:pointer; font-weight:600; }
+  .big:hover { background:#3a2f19; }
+  .g2 { display:flex; gap:5px; }
+  .g2 .big { margin-top:6px; }
+  #canvasWrap { position: relative; overflow: auto; background: #0c0b07; }
+  #canvasWrap.grab { cursor: grabbing; }
+  #c { display: block; image-rendering: pixelated; }
+  #hud { position: fixed; left: 250px; bottom: 8px; background: #000a; padding: 3px 9px; border-radius: 4px; color: #d8c88f; font-size: 12px; pointer-events: none; z-index: 5; }
+  #entpick { font-size: 12px; margin-top: 4px; width: 100%; background:#12100b; color:var(--ink); border:1px solid var(--edge); border-radius:4px; padding:4px; }
+  #modal { position: fixed; inset: 0; background: #000c; display: none; place-items: center; z-index: 20; }
+  #modal.on { display: grid; }
+  #modalBox { width: min(780px, 92vw); max-height: 84vh; overflow: auto; background: #1b1810; border: 3px ridge #927644; padding: 16px; border-radius: 6px; }
+  #modalBox h3 { color: var(--gold); margin: 0 0 8px; }
+  textarea { width: 100%; height: 260px; background: #0e0c08; color: #cfe6a6; border: 1px solid var(--edge); font: 11px/1.4 monospace; padding: 8px; border-radius: 4px; }
+  .hint { color: var(--dim); font-size: 11.5px; }
+  a.dl { color:#7fc0e6; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="side">
+    <h1>Map Editor</h1>
+    <div class="hint">Paint terrain &amp; place entities, then Export.</div>
+
+    <h2>View</h2>
+    <div class="row">
+      <button class="big" id="fit" style="margin-top:0">Fit to screen</button>
+    </div>
+    <label class="ctl">Zoom <input id="zoom" type="range" min="2" max="48" value="5"><span id="zoomv">5</span>px</label>
+    <div class="hint">Scroll bars or <b>drag with Space / middle-mouse</b> to move. Mouse-wheel zooms.</div>
+    <div class="g2"><button class="big" id="undo" style="margin-top:6px">↶ Undo</button><button class="big" id="redo" style="margin-top:6px">↷ Redo</button></div>
+
+    <h2>Tools</h2>
+    <div class="row">
+      <button class="tool on" data-tool="paint">Paint</button>
+      <button class="tool" data-tool="fill">Fill</button>
+      <button class="tool" data-tool="rect">Rect</button>
+      <button class="tool" data-tool="line">Line</button>
+      <button class="tool" data-tool="pick">Pick</button>
+      <button class="tool" data-tool="building">Building</button>
+      <button class="tool" data-tool="prefab">Prefab</button>
+      <button class="tool" data-tool="select">Select</button>
+      <button class="tool" data-tool="entity">Entity</button>
+      <button class="tool" data-tool="move">Move/Del</button>
+    </div>
+    <h2>3D Structures</h2>
+    <div class="row">
+      <button class="tool" data-tool="wallEdge">Wall</button>
+      <button class="tool" data-tool="fenceEdge">Fence</button>
+      <button class="tool" data-tool="doorEdge">Door</button>
+      <button class="tool" data-tool="eraseEdge">Erase</button>
+    </div>
+    <div class="hint" id="structureHint" style="margin-top:5px">Click or drag along tile edges. After tracing an old box fence or wall, repaint its old terrain tile as grass, floor, road, or the surrounding ground.</div>
+    <input id="structureImport" type="file" accept=".json,application/json" style="display:none">
+    <button class="big" id="importStructures">Import world_structures.json</button>
+    <h2>Elevation</h2>
+    <div class="row">
+      <button class="tool" data-tool="raise">Raise</button>
+      <button class="tool" data-tool="lower">Lower</button>
+      <button class="tool" data-tool="flatten">Flatten</button>
+    </div>
+    <label class="ctl">Flatten level <input id="elevationLevel" type="range" min="-8" max="20" value="0"><span id="elevationLevelValue">0.00m</span></label>
+    <div class="hint" style="margin-bottom:3px">Pick a height, then paint it onto tiles:</div>
+    <div id="heightPresets"></div>
+    <div class="hint">Each level is 0.25m. Raise/Lower nudge by ±1 level; the height buttons and Flatten paint an exact level. Tip: neighbouring tiles more than 1 level apart become an impassable cliff — keep steps to 1 level for a walkable ramp/platform.</div>
+    <label class="ctl">Brush <input id="brush" type="range" min="1" max="12" value="1"><span id="brushv">1</span></label>
+    <label class="ctl" id="bsizeRow" style="display:none">Bld size <input id="bsize" type="range" min="3" max="12" value="6"><span id="bsizev">6×5</span></label>
+    <div id="bstyleRow" style="display:none; margin:5px 0">
+      <select id="bstylePick" style="width:100%;background:#12100b;color:var(--ink);border:1px solid var(--edge);border-radius:4px;padding:5px"></select>
+      <div class="hint" style="margin-top:4px">Sets the wall material, door, and interior decor the live game renders for this building.</div>
+    </div>
+    <div id="prefabRow" style="display:none">
+      <select id="prefabPick" style="width:100%;background:#12100b;color:var(--ink);border:1px solid var(--edge);border-radius:4px;padding:5px"></select>
+      <button class="big" id="prefabRotate" style="margin-top:6px">⟳ Rotate (R)</button>
+      <div class="hint" style="margin-top:4px">Pick a structure, hover to preview, click to drop. Press <b>R</b> to rotate.</div>
+    </div>
+    <div id="selectRow" style="display:none">
+      <label class="ctl"><input type="checkbox" id="selMove" checked> Move (clear original)</label>
+      <button class="big" id="savePrefab" style="margin-top:2px">★ Save selection as prefab</button>
+      <div class="hint" style="margin-top:4px">Drag a box to lift tiles, entities, walls, fences, and doors. They follow the cursor — <b>R</b> rotates, <b>click</b> drops, <b>Esc</b> cancels.</div>
+    </div>
+
+    <h2>Terrain</h2>
+    <div class="row" id="palette"></div>
+
+    <h2>Quick generate</h2>
+    <button class="big" id="fillMap" style="margin-top:0">Fill whole map with selected tile</button>
+    <button class="big" id="genTerrain">Generate natural base (grass + water + forest)</button>
+    <button class="big" id="genElevation">Generate gentle elevation</button>
+
+    <h2>Entity to place</h2>
+    <div class="row" id="entTypes"></div>
+    <select id="entpick"></select>
+    <div id="npcChecklist" class="hint" style="margin-top:6px; line-height:1.6; display:none"></div>
+    <button class="big" id="removeAllNpcs" style="margin-top:6px; display:none">Remove all NPCs</button>
+
+    <h2>Map</h2>
+    <button class="big" id="loadCur" style="margin-top:0">Load current Emberfall map</button>
+    <input id="mapImport" type="file" accept=".json,application/json" style="display:none">
+    <button class="big" id="importMap">Import exported map</button>
+    <button class="big" id="clear">Clear to blank grass</button>
+
+    <h2>Export</h2>
+    <button class="big" id="export" style="margin-top:0">Export world.js + entities</button>
+    <div class="hint" style="margin-top:6px">Entities placed: <span id="entCount">0</span></div>
+    <div class="hint" style="margin-top:2px">Buildings placed: <span id="bldCount">0</span></div>
+    <div class="hint" style="margin-top:2px">Structure edges: <span id="structureCount">0</span></div>
+  </div>
+  <div id="canvasWrap"><canvas id="c"></canvas></div>
+</div>
+<div id="hud">—</div>
+
+<div id="modal"><div id="modalBox">
+  <h3>Export</h3>
+  <p class="hint">1) Save the <b>world.js</b> below over <code>EF1/js/world.js</code>. 2) Paste the <b>entities</b> block into <code>EF1/js/data.js</code>, replacing the matching arrays. Then reload the game.</p>
+  <div id="dllinks"></div>
+  <h3 style="margin-top:12px">world.js</h3>
+  <textarea id="outWorld" spellcheck="false"></textarea>
+  <h3 style="margin-top:12px">entities (paste into data.js)</h3>
+  <textarea id="outEnt" spellcheck="false"></textarea>
+  <h3 style="margin-top:12px">world_structures.json (Godot + editor)</h3>
+  <textarea id="outStructures" spellcheck="false"></textarea>
+  <button class="big" id="closeModal" style="width:auto;margin-top:10px">Close</button>
+</div></div>
+
+<script src="js/data.js?v=20260716l"></script>
+<script src="js/world.js?v=20260716i"></script>
+<script src="js/world_structures.js?v=20260724a"></script>
+<script>
+const W = 192, H = 160;
+const MAX_ZOOM = 48;
+const TILES = [
+  ['grass', 0, '#4b7a34'], ['road/path', 1, '#a98c5c'], ['water', 2, '#2f6f94'],
+  ['tree', 3, '#20441f'], ['wall', 4, '#5a584f'], ['floor', 5, '#8a7355'],
+  ['counter', 6, '#7a512d'], ['fence', 7, '#5f4a2c'], ['fire', 8, '#d55d25'],
+  ['bank booth', 9, '#6f5f45'], ['marsh', 10, '#496a46'], ['dock', 11, '#725238'],
+  ['snow', 12, '#d7e2ee'], ['ash', 13, '#3a342e'], ['lava', 14, '#d5622a'],
+];
+const TILECOL = {}; TILES.forEach(([n, v, c]) => (TILECOL[v] = c));
+const WALKABLE_TILES = [0, 1, 5, 8, 10, 11, 12, 13];
+const ENC = '0123456789abcde';
+const ENTITY_TYPES = {
+  spawn: { label: 'Spawn', color: '#ffd94a', single: true },
+  npc: { label: 'NPC', color: '#67b9e8', pick: ['elowen','alaric','murphy','banker','rowan','tamsin','fen','mira','torren','bren','jory','nessa','willow','orin','maeve','vale','mara','edric','sable','fenwick'] },
+  monster: { label: 'Monster', color: '#d95c52', pick: ['rat','goblin','wolf','boar','bandit','bogling','direWolf','goblinWarlord','cinderFiend','frostTroll','cinderColossus','guardian','skeleton','bat','spider','warden'] },
+  fish: { label: 'Fishing', color: '#57c6df', pick: ['rawFish','rawEel'] },
+  rock: { label: 'Rock', color: '#c8a06a', pick: ['copperOre','ironOre','coal','mithrilOre'] },
+  tree: { label: 'Tree', color: '#4f9d3f' },
+  hunt: { label: 'Burrow', color: '#b58b57' },
+  farm: { label: 'Farm', color: '#8fbd4d' },
+  forge: { label: 'Forge', color: '#e5772b', single: true },
+  altar: { label: 'Altar', color: '#b48ce0', single: true },
+  workbench: { label: 'Bench', color: '#c9b98f', single: true },
+  cauldron: { label: 'Cauldron', color: '#7ab0a0', single: true },
+  signpost: { label: 'Sign', color: '#dbc06d' },
+  chest: { label: 'D.Chest', color: '#d2af58', single: true },
+  tablet: { label: 'Tablet', color: '#a9e5ef' },
+  portal: { label: 'Portal', color: '#b56cff' },
+};
+
+let grid = Array.from({ length: H }, () => Array(W).fill(0));
+let elevation = Array.from({ length: H }, () => Array(W).fill(0));
+let ents = [];
+let bldgs = []; // { x, y, w, h, doorX, style }
+let editorStructures = []; // { x1, y1, x2, y2, type: wall|fence|door }
+const STRUCTURE_TOOLS = new Set(['wallEdge', 'fenceEdge', 'doorEdge', 'eraseEdge']);
+const BUILDING_STYLES = [
+  ['heartwood', 'Greenrest Vale (warm timber)'],
+  ['oakridge', 'Pineholt (pine cabin)'],
+  ['willow', 'Thornwood (woodland)'],
+  ['castle', 'Frostmere / Ashfall (stone keep)'],
+  ['frontier', 'Cinderforge (weathered)'],
+  ['mire', 'Sablemarsh (marsh stilthouse)'],
+];
+let curBldStyle = 'heartwood';
+let tool = 'paint', curTile = 0, curEnt = 'npc', curSub = 'elowen';
+let brush = 1, bsize = 6, zoom = 5, elevationLevel = 0;
+let dragging = false, panning = false, startCell = null, hoverCell = null;
+let hoverEdge = null;
+let spaceDown = false, panStart = null;
+let selecting = false, floatBuf = null;
+let undoStack = [], redoStack = [];
+
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const wrap = document.getElementById('canvasWrap');
+
+// ---- palette + entity UI ----
+const pal = document.getElementById('palette');
+TILES.forEach(([name, val, col]) => {
+  const b = document.createElement('button');
+  b.className = 'tbtn' + (val === 0 ? ' on' : '');
+  b.dataset.tile = val;
+  b.innerHTML = `<span class="sw" style="background:${col}"></span>${name}`;
+  b.onclick = () => { curTile = val; if (tool !== 'rect' && tool !== 'line' && tool !== 'fill' && tool !== 'building') setTool('paint'); document.querySelectorAll('.tbtn').forEach((x) => x.classList.toggle('on', x === b)); };
+  pal.appendChild(b);
+});
+const entWrap = document.getElementById('entTypes'), entPick = document.getElementById('entpick');
+Object.entries(ENTITY_TYPES).forEach(([k, v]) => {
+  const b = document.createElement('button');
+  b.className = 'ebtn' + (k === 'npc' ? ' on' : '');
+  b.dataset.ent = k;
+  b.innerHTML = `<span class="sw" style="background:${v.color}"></span>${v.label}`;
+  b.onclick = () => { curEnt = k; setTool('entity'); document.querySelectorAll('.ebtn').forEach((x) => x.classList.toggle('on', x === b)); fillPick(); };
+  entWrap.appendChild(b);
+});
+function fillPick() {
+  const p = ENTITY_TYPES[curEnt].pick;
+  entPick.innerHTML = p ? p.map((o) => `<option value="${o}">${o}</option>`).join('') : '<option>(no options)</option>';
+  entPick.disabled = !p; curSub = p ? p[0] : null;
+  refreshPickLabels();
+  refreshNpcChecklist();
+}
+entPick.onchange = () => (curSub = entPick.value);
+// ---- NPC duplicate-placement awareness ----
+function refreshPickLabels() {
+  if (curEnt !== 'npc') return;
+  const placed = new Set(ents.filter((e) => e.type === 'npc').map((e) => e.sub));
+  Array.from(entPick.options).forEach((o) => { o.textContent = placed.has(o.value) ? o.value + ' — placed (re-click moves)' : o.value; });
+}
+function refreshNpcChecklist() {
+  const box = document.getElementById('npcChecklist');
+  const removeBtn = document.getElementById('removeAllNpcs');
+  if (!box) return;
+  if (curEnt !== 'npc') { box.style.display = 'none'; if (removeBtn) removeBtn.style.display = 'none'; return; }
+  const placed = new Set(ents.filter((e) => e.type === 'npc').map((e) => e.sub));
+  const all = ENTITY_TYPES.npc.pick;
+  const n = all.filter((id) => placed.has(id)).length;
+  box.style.display = '';
+  box.innerHTML = `<b>${n}/${all.length} NPCs placed</b> <span style="color:var(--dim)">— placing a name again moves it</span><br>` +
+    all.map((id) => (placed.has(id) ? `<span style="color:#7fd88f">✓ ${id}</span>` : `<span style="color:var(--dim)">${id}</span>`)).join(' · ');
+  if (removeBtn) removeBtn.style.display = '';
+}
+document.getElementById('removeAllNpcs').onclick = () => {
+  const count = ents.filter((e) => e.type === 'npc').length;
+  if (!count) return;
+  if (!confirm(`Remove all ${count} placed NPCs from the map?`)) return;
+  pushUndo();
+  ents = ents.filter((e) => e.type !== 'npc');
+  updateCount();
+  draw();
+};
+fillPick();
+const bstylePick = document.getElementById('bstylePick');
+bstylePick.innerHTML = BUILDING_STYLES.map(([k, label]) => `<option value="${k}">${label}</option>`).join('');
+bstylePick.onchange = () => { curBldStyle = bstylePick.value; };
+
+// ---- prefabs (drop-in structures) ----
+const CHARMAP = { '.': -1, g: 0, p: 1, w: 2, T: 3, '#': 4, f: 5, c: 6, H: 7, '*': 8, B: 9, d: 11 };
+const PREFABS = {
+  cottage: { label: 'Cottage (7×5)', rows: [
+    '#######',
+    '#fffff#',
+    '#ff*ff#',
+    '#fffff#',
+    '###ff##'] },
+  house: { label: 'House (9×7)', rows: [
+    '#########',
+    '#fffffff#',
+    '#fffffff#',
+    '#fff*fff#',
+    '#fffffff#',
+    '#fffffff#',
+    '####ff###'] },
+  manor: { label: 'Manor, 2 rooms (13×9)', rows: [
+    '#############',
+    '#fffff#fffff#',
+    '#fffff#fffff#',
+    '#fffff#fffff#',
+    '#fffff#fffff#',
+    '#fffffffffff#',
+    '#fff*fff*fff#',
+    '#fffffffffff#',
+    '#####fff#####'] },
+  guardsQuarters: { label: "Guards' quarters (11×8)", rows: [
+    '###########',
+    '#ffff#ffff#',
+    '#ffff#ffff#',
+    '#ffff#ffff#',
+    '#fffffffff#',
+    '#ff*fff*ff#',
+    '#fffffffff#',
+    '####fff####'] },
+  shop: { label: 'Shop w/ counter (9×7)', rows: [
+    '#########',
+    '#fffffff#',
+    '#fffffff#',
+    '#ccccccf#',
+    '#fffffff#',
+    '#fffffff#',
+    '###ff####'] },
+  tower: { label: 'Guard tower (5×5)', rows: [
+    '#####',
+    '#fff#',
+    '#f*f#',
+    '#fff#',
+    '##f##'] },
+  church: { label: 'Church, apse + nave (9×11)', rows: [
+    '..#####..',
+    '..#fff#..',
+    '..#fff#..',
+    '#fffffff#',
+    '#fffffff#',
+    '#fffffff#',
+    '#fffffff#',
+    '#fffffff#',
+    '#fffffff#',
+    '#fffffff#',
+    '####f####'] },
+  cottageGarden: { label: 'Cottage + fenced garden (9×9)', rows: [
+    'HHHHHHHHH',
+    'Hg#####gH',
+    'Hg#fff#gH',
+    'Hg#f*f#gH',
+    'Hg#fff#gH',
+    'Hg##f##gH',
+    'HgggggggH',
+    'HgggggggH',
+    'HHHHgHHHH'] },
+  castle: { label: 'CASTLE — keep, towers, gate (20×16)', rows: [
+    '####################',
+    '#ff#ffffffffffff#ff#',
+    '#ff#ffffffffffff#ff#',
+    '####ffffffffffff####',
+    '#ffffffffffffffffff#',
+    '#ffffff######ffffff#',
+    '#ffffff#ffff#ffffff#',
+    '#ffffff#f**f#ffffff#',
+    '#ffffff#ffff#ffffff#',
+    '#ffffff##ff##ffffff#',
+    '#ffffffffppffffffff#',
+    '#ffffffffppffffffff#',
+    '#########pp#########',
+    '#ff#.....pp.....#ff#',
+    '#ff#.....pp.....#ff#',
+    '####.....pp.....####'] },
+  fountain: { label: 'Fountain (4×4, 2×2 pool)', rows: [
+    'ffff',
+    'fwwf',
+    'fwwf',
+    'ffff'] },
+  diagPath: { label: 'Diagonal path piece (3×3)', rows: [
+    '..p',
+    '.pp',
+    'pp.'] },
+};
+function parsePrefab(rows) { return rows.map((r) => r.split('').map((ch) => (ch in CHARMAP ? CHARMAP[ch] : -1))); }
+// load any user-saved prefabs (stored as tile matrices) from localStorage
+try { const saved = JSON.parse(localStorage.getItem('ef_prefabs') || '{}'); Object.assign(PREFABS, saved); } catch (e) {}
+let curPrefab = 'cottage', prefabRot = 0;
+function rotCW(m) { const h = m.length, w = m[0].length, r = Array.from({ length: w }, () => Array(h).fill(-1)); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) r[x][h - 1 - y] = m[y][x]; return r; }
+function baseMatrix(k) { const p = PREFABS[k]; return p.m ? p.m.map((r) => r.slice()) : parsePrefab(p.rows); }
+function prefabMatrix() { let m = baseMatrix(curPrefab); for (let i = 0; i < prefabRot; i++) m = rotCW(m); return m; }
+function prefabElevation() { const p = PREFABS[curPrefab]; if (!p.hm) return null; let m = p.hm.map((r) => r.slice()); for (let i = 0; i < prefabRot; i++) m = rotCW(m); return m; }
+// rotate a list of relative-positioned entities `rot` quarter-turns CW, matching rotCW on a base matrix
+function rotEntsN(list, baseM, rot) { let out = list.map((s) => ({ type: s.type, sub: s.sub, rx: s.rx, ry: s.ry })); let w = baseM[0].length, h = baseM.length; for (let i = 0; i < rot; i++) { out = out.map((s) => ({ type: s.type, sub: s.sub, rx: h - 1 - s.ry, ry: s.rx })); const t = w; w = h; h = t; } return out; }
+function prefabEnts() { const p = PREFABS[curPrefab]; return rotEntsN(p.ents || [], baseMatrix(curPrefab), prefabRot); }
+function rotEdgesN(list, baseM, rot) {
+  let out = list.map((e) => ({ ...e }));
+  let w = baseM[0].length, h = baseM.length;
+  for (let i = 0; i < rot; i++) {
+    out = out.map((e) => ({
+      x1: h - 1 - e.y1, y1: e.x1,
+      x2: h - 1 - e.y2, y2: e.x2,
+      type: e.type,
+    }));
+    const t = w; w = h; h = t;
+  }
+  return out;
+}
+function derivePrefabWallEdges(p) {
+  if (!p.rows) return [];
+  const m = parsePrefab(p.rows), edges = [];
+  const isInterior = (x, y) => y >= 0 && y < m.length && x >= 0 && x < m[y].length && [5, 6, 8, 11].includes(m[y][x]);
+  for (let y = 0; y < m.length; y++) for (let x = 0; x < m[y].length; x++) {
+    if (m[y][x] !== 4) continue;
+    if (isInterior(x + 1, y)) edges.push({ x1: x, y1: y, x2: x + 1, y2: y, type: 'wall' });
+    if (isInterior(x - 1, y)) edges.push({ x1: x, y1: y, x2: x - 1, y2: y, type: 'wall' });
+    if (isInterior(x, y + 1)) edges.push({ x1: x, y1: y, x2: x, y2: y + 1, type: 'wall' });
+    if (isInterior(x, y - 1)) edges.push({ x1: x, y1: y, x2: x, y2: y - 1, type: 'wall' });
+  }
+  return edges;
+}
+function prefabEdges() {
+  const p = PREFABS[curPrefab];
+  const edges = p.edges || derivePrefabWallEdges(p);
+  return rotEdgesN(edges, baseMatrix(curPrefab), prefabRot);
+}
+function stampPrefab(x0, y0) {
+  const m = prefabMatrix();
+  for (let y = 0; y < m.length; y++) for (let x = 0; x < m[y].length; x++) { const t = m[y][x]; if (t >= 0) setT(x0 + x, y0 + y, t); }
+  const hm = prefabElevation();
+  if (hm) for (let y = 0; y < hm.length; y++) for (let x = 0; x < hm[y].length; x++) if (y0 + y < H && x0 + x < W) elevation[y0 + y][x0 + x] = hm[y][x];
+  for (const se of prefabEnts()) addEntity(se.type, se.sub, x0 + se.rx, y0 + se.ry);
+  for (const edge of prefabEdges()) addStructureRecord({
+    x1: x0 + edge.x1, y1: y0 + edge.y1,
+    x2: x0 + edge.x2, y2: y0 + edge.y2,
+    type: edge.type,
+  });
+  saveStructuresLocal(); updateCount();
+}
+const prefabPick = document.getElementById('prefabPick');
+function refreshPrefabPicker() { prefabPick.innerHTML = Object.entries(PREFABS).map(([k, v]) => `<option value="${k}"${k === curPrefab ? ' selected' : ''}>${v.label}</option>`).join(''); }
+function loadUserPrefabs() { try { const u = JSON.parse(localStorage.getItem('ef_prefabs') || '{}'); for (const [k, v] of Object.entries(u)) if (k && k.startsWith('u_')) PREFABS[k] = v; } catch (e) {} }
+loadUserPrefabs();
+refreshPrefabPicker();
+prefabPick.onchange = () => { curPrefab = prefabPick.value; prefabRot = 0; draw(); };
+document.getElementById('prefabRotate').onclick = () => { prefabRot = (prefabRot + 1) % 4; draw(); };
+function saveUserPrefabs() { try { const u = {}; for (const [k, v] of Object.entries(PREFABS)) if (k.startsWith('u_')) u[k] = v; localStorage.setItem('ef_prefabs', JSON.stringify(u)); } catch (e) {} }
+document.getElementById('savePrefab').onclick = () => {
+  if (!floatBuf) { alert('Use the Select tool: drag a box over the tiles you want, then click this to save them as a prefab.'); return; }
+  const name = (prompt('Name this prefab:') || '').trim();
+  if (!name) return;
+  const key = 'u_' + Date.now();
+  PREFABS[key] = {
+    label: '★ ' + name + ' (' + floatBuf.m[0].length + '×' + floatBuf.m.length + ')',
+    m: floatBuf.m.map((r) => r.slice()),
+    hm: floatBuf.hm ? floatBuf.hm.map((r) => r.slice()) : null,
+    ents: (floatBuf.ents || []).map((s) => ({ type: s.type, sub: s.sub, rx: s.rx, ry: s.ry })),
+    edges: (floatBuf.edges || []).map((e) => ({ ...e })),
+  };
+  saveUserPrefabs(); refreshPrefabPicker();
+  alert('Saved to the Prefab list as “★ ' + name + '”. Switch to the Prefab tool to place it.');
+};
+
+function stampMatrix(m, x0, y0) { for (let y = 0; y < m.length; y++) for (let x = 0; x < m[y].length; x++) { const t = m[y][x]; if (t >= 0) setT(x0 + x, y0 + y, t); } }
+function commitFloat() {
+  if (!floatBuf) return;
+  stampMatrix(floatBuf.m, floatBuf.x, floatBuf.y);
+  if (floatBuf.hm) for (let y = 0; y < floatBuf.hm.length; y++) for (let x = 0; x < floatBuf.hm[y].length; x++) {
+    const tx = floatBuf.x + x, ty = floatBuf.y + y;
+    if (tx >= 0 && ty >= 0 && tx < W && ty < H) elevation[ty][tx] = floatBuf.hm[y][x];
+  }
+  if (floatBuf.ents) for (const se of floatBuf.ents) addEntity(se.type, se.sub, floatBuf.x + se.rx, floatBuf.y + se.ry);
+  if (floatBuf.edges) for (const edge of floatBuf.edges) addStructureRecord({
+    x1: floatBuf.x + edge.x1, y1: floatBuf.y + edge.y1,
+    x2: floatBuf.x + edge.x2, y2: floatBuf.y + edge.y2,
+    type: edge.type,
+  });
+  floatBuf = null; saveStructuresLocal(); updateCount();
+}
+function rotateFloat() {
+  if (!floatBuf) return;
+  const oldMatrix = floatBuf.m, oldH = oldMatrix.length;
+  if (floatBuf.ents) floatBuf.ents = floatBuf.ents.map((se) => ({ type: se.type, sub: se.sub, rx: oldH - 1 - se.ry, ry: se.rx }));
+  if (floatBuf.edges) floatBuf.edges = rotEdgesN(floatBuf.edges, oldMatrix, 1);
+  if (floatBuf.hm) floatBuf.hm = rotCW(floatBuf.hm);
+  floatBuf.m = rotCW(oldMatrix);
+}
+function setTool(t) {
+  if (floatBuf && t !== 'select') { commitFloat(); }
+  tool = t;
+  document.querySelectorAll('.tool').forEach((x) => x.classList.toggle('on', x.dataset.tool === t));
+  document.getElementById('bsizeRow').style.display = t === 'building' ? '' : 'none';
+  document.getElementById('bstyleRow').style.display = t === 'building' ? '' : 'none';
+  document.getElementById('prefabRow').style.display = t === 'prefab' ? '' : 'none';
+  document.getElementById('selectRow').style.display = t === 'select' ? '' : 'none';
+  refreshHeightPresetHighlight();
+}
+document.querySelectorAll('.tool').forEach((b) => (b.onclick = () => setTool(b.dataset.tool)));
+document.getElementById('brush').oninput = (e) => { brush = +e.target.value; document.getElementById('brushv').textContent = brush; };
+document.getElementById('elevationLevel').oninput = (e) => {
+  elevationLevel = +e.target.value;
+  document.getElementById('elevationLevelValue').textContent = (elevationLevel * 0.25).toFixed(2) + 'm';
+  refreshHeightPresetHighlight();
+};
+
+// ---- height preset buttons (paint an exact tile level) ----
+const HEIGHT_PRESETS = [-2, -1, 0, 1, 2, 3, 4];
+function refreshHeightPresetHighlight() {
+  document.querySelectorAll('#heightPresets .hbtn').forEach((b) => {
+    b.classList.toggle('on', tool === 'flatten' && +b.dataset.h === elevationLevel);
+  });
+}
+(function buildHeightPresets() {
+  const row = document.getElementById('heightPresets');
+  if (!row) return;
+  HEIGHT_PRESETS.forEach((lvl) => {
+    const b = document.createElement('button');
+    b.className = 'hbtn';
+    b.dataset.h = lvl;
+    const m = (lvl * 0.25).toFixed(2);
+    b.textContent = (lvl > 0 ? '+' : '') + m.replace(/\.00$/, '') + 'm';
+    b.title = 'Level ' + lvl + ' (' + m + 'm) — click, then paint tiles';
+    b.onclick = () => {
+      elevationLevel = lvl;
+      document.getElementById('elevationLevel').value = lvl;
+      document.getElementById('elevationLevelValue').textContent = m + 'm';
+      setTool('flatten');
+    };
+    row.appendChild(b);
+  });
+  refreshHeightPresetHighlight();
+})();
+document.getElementById('bsize').oninput = (e) => { bsize = +e.target.value; document.getElementById('bsizev').textContent = bsize + '×' + Math.max(3, bsize - 1); };
+document.getElementById('zoom').oninput = (e) => { setZoom(+e.target.value, true); };
+
+// ---- undo/redo ----
+function encodeTiles() { let s = ''; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) s += ENC[grid[y][x]]; return s; }
+function snapshot() { return { t: encodeTiles(), h: JSON.stringify(elevation), e: JSON.stringify(ents), b: JSON.stringify(bldgs), s: JSON.stringify(editorStructures) }; }
+function pushUndo() { undoStack.push(snapshot()); if (undoStack.length > 50) undoStack.shift(); redoStack = []; }
+function restore(s) { for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) grid[y][x] = ENC.indexOf(s.t[y * W + x]); elevation = s.h ? JSON.parse(s.h) : Array.from({ length: H }, () => Array(W).fill(0)); ents = JSON.parse(s.e); bldgs = s.b ? JSON.parse(s.b) : []; editorStructures = s.s ? JSON.parse(s.s) : []; saveStructuresLocal(); updateCount(); draw(); }
+function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); restore(undoStack.pop()); }
+function redo() { if (!redoStack.length) return; undoStack.push(snapshot()); restore(redoStack.pop()); }
+document.getElementById('undo').onclick = undo;
+document.getElementById('redo').onclick = redo;
+
+// ---- canvas sizing / view ----
+function resize() { cv.width = W * zoom; cv.height = H * zoom; cv.style.width = W * zoom + 'px'; cv.style.height = H * zoom + 'px'; draw(); }
+function setZoom(z, keepCenter) {
+  z = Math.max(2, Math.min(MAX_ZOOM, z));
+  const cx = (wrap.scrollLeft + wrap.clientWidth / 2) / (W * zoom);
+  const cy = (wrap.scrollTop + wrap.clientHeight / 2) / (H * zoom);
+  zoom = z; document.getElementById('zoom').value = z; document.getElementById('zoomv').textContent = z; resize();
+  if (keepCenter) { wrap.scrollLeft = cx * W * zoom - wrap.clientWidth / 2; wrap.scrollTop = cy * H * zoom - wrap.clientHeight / 2; }
+}
+function fitToScreen() {
+  const z = Math.max(2, Math.min(MAX_ZOOM, Math.floor(Math.min((wrap.clientWidth - 24) / W, (wrap.clientHeight - 24) / H))));
+  setZoom(z, false);
+  wrap.scrollLeft = (cv.width - wrap.clientWidth) / 2;
+  wrap.scrollTop = (cv.height - wrap.clientHeight) / 2;
+}
+document.getElementById('fit').onclick = fitToScreen;
+
+function structureKey(e) {
+  return e.x1 < e.x2 || (e.x1 === e.x2 && e.y1 < e.y2)
+    ? `${e.x1},${e.y1}|${e.x2},${e.y2}`
+    : `${e.x2},${e.y2}|${e.x1},${e.y1}`;
+}
+function normalizeEdge(e) {
+  return e.x1 < e.x2 || (e.x1 === e.x2 && e.y1 < e.y2)
+    ? e
+    : { x1: e.x2, y1: e.y2, x2: e.x1, y2: e.y1, type: e.type };
+}
+function edgeFromEvent(ev) {
+  const r = cv.getBoundingClientRect();
+  const gx = (ev.clientX - r.left) / zoom, gy = (ev.clientY - r.top) / zoom;
+  const x = Math.floor(gx), y = Math.floor(gy);
+  if (x < 0 || y < 0 || x >= W || y >= H) return null;
+  const fx = gx - x, fy = gy - y;
+  const choices = [
+    { d: fx, e: { x1: x, y1: y, x2: x - 1, y2: y } },
+    { d: 1 - fx, e: { x1: x, y1: y, x2: x + 1, y2: y } },
+    { d: fy, e: { x1: x, y1: y, x2: x, y2: y - 1 } },
+    { d: 1 - fy, e: { x1: x, y1: y, x2: x, y2: y + 1 } },
+  ];
+  choices.sort((a, b) => a.d - b.d);
+  return normalizeEdge(choices[0].e);
+}
+function structureLine(e) {
+  if (e.x1 !== e.x2) {
+    const x = Math.max(e.x1, e.x2) * zoom;
+    return [x, Math.min(e.y1, e.y2) * zoom, x, (Math.min(e.y1, e.y2) + 1) * zoom];
+  }
+  const y = Math.max(e.y1, e.y2) * zoom;
+  return [Math.min(e.x1, e.x2) * zoom, y, (Math.min(e.x1, e.x2) + 1) * zoom, y];
+}
+function applyStructureEdge(edge) {
+  if (!edge) return;
+  const key = structureKey(edge);
+  editorStructures = editorStructures.filter((e) => structureKey(e) !== key);
+  if (tool !== 'eraseEdge') {
+    edge.type = tool === 'wallEdge' ? 'wall' : tool === 'fenceEdge' ? 'fence' : 'door';
+    addStructureRecord(edge);
+  }
+  saveStructuresLocal();
+  updateCount();
+}
+function addStructureRecord(edge) {
+  const normalized = normalizeEdge(edge);
+  const key = structureKey(normalized);
+  editorStructures = editorStructures.filter((e) => structureKey(e) !== key);
+  editorStructures.push(normalized);
+}
+function saveStructuresLocal() {
+  try { localStorage.setItem('ef_world_structures', JSON.stringify(editorStructures)); } catch (e) {}
+}
+
+function draw() {
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  for (let y = 0; y < H; y++) {
+    const row = grid[y]; if (!row) continue;
+    for (let x = 0; x < W; x++) { ctx.fillStyle = TILECOL[row[x]] || '#4b7a34'; ctx.fillRect(x * zoom, y * zoom, zoom, zoom); }
+  }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const h = elevation[y][x];
+    if (!h) continue;
+    const alpha = Math.min(0.5, 0.10 + Math.abs(h) / 28);
+    ctx.fillStyle = h > 0 ? `rgba(255,235,170,${alpha})` : `rgba(30,55,90,${alpha})`;
+    ctx.fillRect(x * zoom, y * zoom, zoom, zoom);
+  }
+  if (zoom >= 7) {
+    ctx.strokeStyle = '#0002'; ctx.lineWidth = 1;
+    for (let x = 0; x <= W; x += 8) { ctx.beginPath(); ctx.moveTo(x * zoom, 0); ctx.lineTo(x * zoom, H * zoom); ctx.stroke(); }
+    for (let y = 0; y <= H; y += 8) { ctx.beginPath(); ctx.moveTo(0, y * zoom); ctx.lineTo(W * zoom, y * zoom); ctx.stroke(); }
+  }
+  // building outlines are overlay-only (not painted into the tile grid — the live game draws
+  // walls from wallEdges, not tiles), so draw a boundary + door marker here for editing feedback
+  for (const b of bldgs) {
+    ctx.strokeStyle = '#ffb35c'; ctx.lineWidth = 2;
+    ctx.strokeRect(b.x * zoom, b.y * zoom, b.w * zoom, b.h * zoom);
+    ctx.fillStyle = '#3a2a12';
+    ctx.fillRect(b.doorX * zoom, (b.y + b.h - 1) * zoom, zoom, zoom);
+  }
+  for (const edge of editorStructures) {
+    const [x1, y1, x2, y2] = structureLine(edge);
+    ctx.strokeStyle = edge.type === 'wall' ? '#e7ddd0' : edge.type === 'fence' ? '#d39a52' : '#62cbe8';
+    ctx.lineWidth = edge.type === 'wall'
+      ? Math.min(8, Math.max(3, zoom * .28))
+      : Math.min(5, Math.max(2, zoom * .2));
+    if (edge.type === 'door') ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  for (const e of ents) {
+    if (!ENTITY_TYPES[e.type]) continue;
+    ctx.fillStyle = ENTITY_TYPES[e.type].color;
+    const cx = e.x * zoom + zoom / 2, cy = e.y * zoom + zoom / 2, r = Math.max(2.5, zoom * 0.42);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+  }
+  if (dragging && (tool === 'rect' || tool === 'line') && startCell && hoverCell) {
+    ctx.fillStyle = TILECOL[curTile] + 'cc';
+    for (const [x, y] of toolCells(startCell, hoverCell, tool)) ctx.fillRect(x * zoom, y * zoom, zoom, zoom);
+  }
+  if (selecting && startCell && hoverCell) {
+    const rx = Math.min(startCell[0], hoverCell[0]), ry = Math.min(startCell[1], hoverCell[1]), rw = Math.abs(hoverCell[0] - startCell[0]) + 1, rh = Math.abs(hoverCell[1] - startCell[1]) + 1;
+    ctx.fillStyle = '#ffe58122'; ctx.fillRect(rx * zoom, ry * zoom, rw * zoom, rh * zoom);
+    ctx.strokeStyle = '#ffe581'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.strokeRect(rx * zoom, ry * zoom, rw * zoom, rh * zoom); ctx.setLineDash([]);
+  }
+  if (floatBuf) {
+    const m = floatBuf.m;
+    for (let y = 0; y < m.length; y++) for (let x = 0; x < m[y].length; x++) { const t = m[y][x]; if (t >= 0) { ctx.fillStyle = (TILECOL[t] || '#4b7a34'); ctx.fillRect((floatBuf.x + x) * zoom, (floatBuf.y + y) * zoom, zoom, zoom); } }
+    if (floatBuf.ents) for (const se of floatBuf.ents) { const def = ENTITY_TYPES[se.type]; if (!def) continue; ctx.fillStyle = def.color; ctx.beginPath(); ctx.arc((floatBuf.x + se.rx + 0.5) * zoom, (floatBuf.y + se.ry + 0.5) * zoom, Math.max(2.5, zoom * 0.42), 0, 7); ctx.fill(); ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke(); }
+    if (floatBuf.edges) for (const edge of floatBuf.edges) {
+      const absolute = { x1: floatBuf.x + edge.x1, y1: floatBuf.y + edge.y1, x2: floatBuf.x + edge.x2, y2: floatBuf.y + edge.y2, type: edge.type };
+      const [x1, y1, x2, y2] = structureLine(absolute);
+      ctx.strokeStyle = edge.type === 'wall' ? '#e7ddd0' : edge.type === 'fence' ? '#d39a52' : '#62cbe8';
+      ctx.lineWidth = edge.type === 'wall' ? 5 : 3;
+      if (edge.type === 'door') ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]);
+    }
+    ctx.strokeStyle = '#7fffd4'; ctx.lineWidth = 2; ctx.setLineDash([5, 3]); ctx.strokeRect(floatBuf.x * zoom, floatBuf.y * zoom, m[0].length * zoom, m.length * zoom); ctx.setLineDash([]);
+  }
+  // cursor preview — matches what will be painted
+  if (hoverCell) {
+    ctx.strokeStyle = '#ffe581'; ctx.lineWidth = 2;
+    if (['paint', 'raise', 'lower', 'flatten'].includes(tool)) { const r = brush - 1; ctx.strokeRect((hoverCell[0] - r) * zoom, (hoverCell[1] - r) * zoom, (2 * r + 1) * zoom, (2 * r + 1) * zoom); }
+    else if (tool === 'building') { ctx.strokeRect(hoverCell[0] * zoom, hoverCell[1] * zoom, bsize * zoom, Math.max(3, bsize - 1) * zoom); }
+    else if (tool === 'prefab') {
+      const m = prefabMatrix();
+      for (let yy = 0; yy < m.length; yy++) for (let xx = 0; xx < m[yy].length; xx++) { const t = m[yy][xx]; if (t >= 0) { ctx.fillStyle = (TILECOL[t] || '#4b7a34') + 'bb'; ctx.fillRect((hoverCell[0] + xx) * zoom, (hoverCell[1] + yy) * zoom, zoom, zoom); } }
+      for (const se of prefabEnts()) { const def = ENTITY_TYPES[se.type]; if (!def) continue; ctx.fillStyle = def.color; ctx.beginPath(); ctx.arc((hoverCell[0] + se.rx + 0.5) * zoom, (hoverCell[1] + se.ry + 0.5) * zoom, Math.max(2.5, zoom * 0.42), 0, 7); ctx.fill(); }
+      for (const edge of prefabEdges()) {
+        const absolute = { x1: hoverCell[0] + edge.x1, y1: hoverCell[1] + edge.y1, x2: hoverCell[0] + edge.x2, y2: hoverCell[1] + edge.y2, type: edge.type };
+        const [x1, y1, x2, y2] = structureLine(absolute);
+        ctx.strokeStyle = edge.type === 'wall' ? '#e7ddd0' : edge.type === 'fence' ? '#d39a52' : '#62cbe8';
+        ctx.lineWidth = edge.type === 'wall' ? 5 : 3;
+        if (edge.type === 'door') ctx.setLineDash([3, 3]);
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]);
+      }
+      ctx.strokeStyle = '#ffe581'; ctx.strokeRect(hoverCell[0] * zoom, hoverCell[1] * zoom, m[0].length * zoom, m.length * zoom);
+    }
+    else ctx.strokeRect(hoverCell[0] * zoom, hoverCell[1] * zoom, zoom, zoom);
+  }
+  if (hoverEdge && STRUCTURE_TOOLS.has(tool)) {
+    const [x1, y1, x2, y2] = structureLine(hoverEdge);
+    ctx.strokeStyle = '#ffe581'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  }
+}
+function cellFrom(ev) {
+  const r = cv.getBoundingClientRect();
+  const x = Math.floor((ev.clientX - r.left) / zoom), y = Math.floor((ev.clientY - r.top) / zoom);
+  return x >= 0 && y >= 0 && x < W && y < H ? [x, y] : null;
+}
+function toolCells(a, b, t) {
+  const cells = []; let [x0, y0] = a, [x1, y1] = b;
+  if (t === 'rect') { for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) cells.push([x, y]); }
+  else { const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1; let err = dx - dy, x = x0, y = y0; while (true) { cells.push([x, y]); if (x === x1 && y === y1) break; const e2 = 2 * err; if (e2 > -dy) { err -= dy; x += sx; } if (e2 < dx) { err += dx; y += sy; } }
+    // fill corners so diagonal lines stay orthogonally connected (walkable)
+    const out = []; for (let i = 0; i < cells.length; i++) { out.push(cells[i]); const n = cells[i + 1]; if (n && cells[i][0] !== n[0] && cells[i][1] !== n[1]) out.push([cells[i][0], n[1]]); } return out; }
+  return cells;
+}
+function paintBrush(x, y) { const rad = brush - 1; for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < W && ny < H) grid[ny][nx] = curTile; } }
+function paintElevation(x, y, mode) {
+  const rad = brush - 1;
+  for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) {
+    const nx = x + dx, ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+    if (mode === 'raise') elevation[ny][nx] = Math.min(20, elevation[ny][nx] + 1);
+    else if (mode === 'lower') elevation[ny][nx] = Math.max(-8, elevation[ny][nx] - 1);
+    else elevation[ny][nx] = elevationLevel;
+  }
+}
+function setT(x, y, t) { if (x >= 0 && y >= 0 && x < W && y < H) grid[y][x] = t; }
+function flood(x, y, target) {
+  if (grid[y][x] !== target || target === curTile) return;
+  const st = [[x, y]];
+  while (st.length) { const [cx, cy] = st.pop(); if (cx < 0 || cy < 0 || cx >= W || cy >= H || grid[cy][cx] !== target) continue; grid[cy][cx] = curTile; st.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]); }
+}
+function stampBuilding(x0, y0) {
+  // matches the live game's building(): floor only, no wall tiles — walls come from wallEdges,
+  // drawn as a thin line by the game's renderer, so painting solid tile-4 here would double up visually.
+  const w = bsize, h = Math.max(3, bsize - 1), doorX = x0 + Math.floor(w / 2);
+  for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) setT(x, y, 5);
+  setT(doorX, y0 + h - 1, 1); // door
+  bldgs.push({ x: x0, y: y0, w, h, doorX, style: curBldStyle });
+  updateCount();
+}
+function bldgAt(x, y) { return bldgs.find((b) => x >= b.x - 1 && x <= b.x + b.w && y >= b.y - 1 && y <= b.y + b.h) || null; }
+function delBuildingAt(x, y) {
+  const b = bldgAt(x, y);
+  if (!b) return false;
+  bldgs = bldgs.filter((bb) => bb !== b);
+  for (let yy = b.y - 1; yy <= b.y + b.h; yy++) for (let xx = b.x - 1; xx <= b.x + b.w; xx++) setT(xx, yy, 0);
+  updateCount();
+  return true;
+}
+function addEntity(type, sub, x, y) {
+  // shared dedup rule: single-instance types replace their one existing copy, NPCs move instead of duplicating
+  const def = ENTITY_TYPES[type];
+  if (def && def.single) ents = ents.filter((e) => e.type !== type);
+  if (type === 'npc') ents = ents.filter((e) => !(e.type === 'npc' && e.sub === sub));
+  ents = ents.filter((e) => !(e.x === x && e.y === y && e.type === type));
+  ents.push({ type, sub, x, y });
+}
+function placeEntity(x, y) { addEntity(curEnt, curSub, x, y); updateCount(); }
+function delEntityAt(x, y) { const b = ents.length; ents = ents.filter((e) => !(e.x === x && e.y === y)); if (ents.length !== b) updateCount(); }
+function entityAt(x, y) { return ents.find((e) => e.x === x && e.y === y) || null; }
+function entityLabel(e) { const def = ENTITY_TYPES[e.type]; return (def ? def.label : e.type) + (e.sub ? ': ' + e.sub : ''); }
+function updateCount() {
+  document.getElementById('entCount').textContent = ents.length;
+  const bc = document.getElementById('bldCount');
+  if (bc) bc.textContent = bldgs.length;
+  const sc = document.getElementById('structureCount');
+  if (sc) sc.textContent = editorStructures.length;
+  refreshPickLabels();
+  refreshNpcChecklist();
+}
+
+// ---- quick generate ----
+document.getElementById('fillMap').onclick = () => { pushUndo(); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) grid[y][x] = curTile; draw(); };
+function blob(cx, cy, r, t) { for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) if (Math.hypot(x - cx, y - cy) <= r) setT(x, y, t); }
+document.getElementById('genTerrain').onclick = () => {
+  pushUndo();
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) grid[y][x] = 0;
+  for (let i = 0; i < 6; i++) blob(20 + Math.random() * (W - 40) | 0, 20 + Math.random() * (H - 40) | 0, 4 + Math.random() * 6 | 0, 2);
+  for (let i = 0; i < 14; i++) blob(10 + Math.random() * (W - 20) | 0, 10 + Math.random() * (H - 20) | 0, 2 + Math.random() * 3 | 0, 3);
+  for (let x = 0; x < W; x++) { setT(x, 0, 3); setT(x, 1, 3); setT(x, H - 1, 3); setT(x, H - 2, 3); }
+  for (let y = 0; y < H; y++) { setT(0, y, 3); setT(1, y, 3); setT(W - 1, y, 3); setT(W - 2, y, 3); }
+  draw();
+};
+document.getElementById('genElevation').onclick = () => {
+  pushUndo();
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const broad = Math.sin(x / 23) * 1.15 + Math.cos(y / 29) * 0.95 + Math.sin((x + y) / 41) * 0.7;
+    elevation[y][x] = Math.max(-3, Math.min(4, Math.round(broad)));
+  }
+  draw();
+};
+
+// ---- mouse ----
+wrap.addEventListener('contextmenu', (e) => e.preventDefault());
+wrap.addEventListener('mousedown', (e) => {
+  if (e.button === 2 || e.button === 1 || spaceDown) { panning = true; wrap.classList.add('grab'); panStart = { x: e.clientX, y: e.clientY, sl: wrap.scrollLeft, st: wrap.scrollTop }; e.preventDefault(); return; }
+  const cell = cellFrom(e); if (!cell) return;
+  if (STRUCTURE_TOOLS.has(tool)) {
+    pushUndo();
+    dragging = true;
+    hoverEdge = edgeFromEvent(e);
+    applyStructureEdge(hoverEdge);
+    draw();
+    return;
+  }
+  if (tool === 'select') {
+    if (floatBuf) { pushUndo(); commitFloat(); draw(); }
+    else { selecting = true; startCell = cell; hoverCell = cell; draw(); }
+    return;
+  }
+  pushUndo();
+  dragging = true; startCell = cell; hoverCell = cell;
+  applyCell(cell); draw();
+});
+addEventListener('mousemove', (e) => {
+  if (panning) { wrap.scrollLeft = panStart.sl - (e.clientX - panStart.x); wrap.scrollTop = panStart.st - (e.clientY - panStart.y); return; }
+  const cell = cellFrom(e); hoverCell = cell;
+  hoverEdge = STRUCTURE_TOOLS.has(tool) ? edgeFromEvent(e) : null;
+  if (cell) {
+    let hudTxt = `x ${cell[0]}, y ${cell[1]}  ·  tile ${TILES.find((t) => t[1] === grid[cell[1]][cell[0]])[0]}  ·  height ${(elevation[cell[1]][cell[0]] * 0.25).toFixed(2)}m`;
+    const hoveredEnt = entityAt(cell[0], cell[1]);
+    if (hoveredEnt) hudTxt += `  ·  ▶ ${entityLabel(hoveredEnt)}`;
+    const hoveredBldg = bldgAt(cell[0], cell[1]);
+    if (hoveredBldg) hudTxt += `  ·  🏠 building (${hoveredBldg.style}, ${hoveredBldg.w}×${hoveredBldg.h})`;
+    if (tool === 'entity' && curEnt === 'npc') {
+      const existing = ents.find((e) => e.type === 'npc' && e.sub === curSub);
+      if (existing && (existing.x !== cell[0] || existing.y !== cell[1]))
+        hudTxt += `  ·  ↺ moves ${curSub} here from (${existing.x}, ${existing.y})`;
+    }
+    document.getElementById('hud').textContent = hudTxt;
+  }
+  if (floatBuf && cell) { floatBuf.x = cell[0] - Math.floor(floatBuf.m[0].length / 2); floatBuf.y = cell[1] - Math.floor(floatBuf.m.length / 2); draw(); return; }
+  if (selecting) { draw(); return; }
+  if (dragging && cell) {
+    if (STRUCTURE_TOOLS.has(tool)) applyStructureEdge(hoverEdge);
+    else if (tool === 'paint') paintBrush(cell[0], cell[1]);
+    else if (['raise', 'lower', 'flatten'].includes(tool)) paintElevation(cell[0], cell[1], tool);
+    else if (tool === 'entity') { if (!ENTITY_TYPES[curEnt].single) placeEntity(cell[0], cell[1]); }
+    else if (tool === 'move') { delEntityAt(cell[0], cell[1]); delBuildingAt(cell[0], cell[1]); }
+  }
+  draw();
+});
+addEventListener('mouseup', (e) => {
+  if (panning) { panning = false; wrap.classList.remove('grab'); return; }
+  if (selecting) {
+    selecting = false;
+    const a = startCell, b = hoverCell || startCell;
+    const rx = Math.min(a[0], b[0]), ry = Math.min(a[1], b[1]), rw = Math.abs(b[0] - a[0]) + 1, rh = Math.abs(b[1] - a[1]) + 1;
+    pushUndo();
+    const move = document.getElementById('selMove').checked;
+    const m = [], hm = [];
+    for (let y = 0; y < rh; y++) {
+      const row = [], heightRow = [];
+      for (let x = 0; x < rw; x++) {
+        row.push(grid[ry + y][rx + x]);
+        heightRow.push(elevation[ry + y][rx + x]);
+        if (move) { grid[ry + y][rx + x] = 0; elevation[ry + y][rx + x] = 0; }
+      }
+      m.push(row); hm.push(heightRow);
+    }
+    const inSel = (e) => e.x >= rx && e.x < rx + rw && e.y >= ry && e.y < ry + rh;
+    const selEnts = ents.filter(inSel).map((e) => ({ type: e.type, sub: e.sub, rx: e.x - rx, ry: e.y - ry }));
+    const tileInSel = (x, y) => x >= rx && x < rx + rw && y >= ry && y < ry + rh;
+    const selectedEdges = editorStructures.filter((edge) =>
+      tileInSel(edge.x1, edge.y1) || tileInSel(edge.x2, edge.y2)
+    );
+    const selEdges = selectedEdges.map((edge) => ({
+      x1: edge.x1 - rx, y1: edge.y1 - ry,
+      x2: edge.x2 - rx, y2: edge.y2 - ry,
+      type: edge.type,
+    }));
+    if (move) ents = ents.filter((e) => !inSel(e));
+    if (move) {
+      const selectedKeys = new Set(selectedEdges.map(structureKey));
+      editorStructures = editorStructures.filter((edge) => !selectedKeys.has(structureKey(edge)));
+      saveStructuresLocal();
+    }
+    floatBuf = { m, hm, x: rx, y: ry, ents: selEnts, edges: selEdges };
+    updateCount(); startCell = null; draw(); return;
+  }
+  if (!dragging) return;
+  if (STRUCTURE_TOOLS.has(tool)) {
+    dragging = false;
+    startCell = null;
+    saveStructuresLocal();
+    draw();
+    return;
+  }
+  const cell = hoverCell || startCell;
+  if (cell && (tool === 'rect' || tool === 'line')) for (const [x, y] of toolCells(startCell, cell, tool)) grid[y][x] = curTile;
+  dragging = false; startCell = null; draw();
+});
+function applyCell(cell) {
+  const [x, y] = cell;
+  if (tool === 'paint') paintBrush(x, y);
+  else if (['raise', 'lower', 'flatten'].includes(tool)) paintElevation(x, y, tool);
+  else if (tool === 'fill') flood(x, y, grid[y][x]);
+  else if (tool === 'building') stampBuilding(x, y);
+  else if (tool === 'prefab') stampPrefab(x, y);
+  else if (tool === 'pick') { curTile = grid[y][x]; document.querySelectorAll('.tbtn').forEach((b) => b.classList.toggle('on', +b.dataset.tile === curTile)); setTool('paint'); }
+  else if (tool === 'entity') placeEntity(x, y);
+  else if (tool === 'move') { delEntityAt(x, y); delBuildingAt(x, y); }
+}
+addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !e.repeat) { spaceDown = true; wrap.style.cursor = 'grab'; }
+  const k = e.key.toLowerCase();
+  if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  else if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); }
+  else if (k === 'r' && tool === 'prefab' && !e.ctrlKey && !e.metaKey) { prefabRot = (prefabRot + 1) % 4; draw(); }
+  else if (k === 'r' && floatBuf && !e.ctrlKey && !e.metaKey) { rotateFloat(); draw(); }
+  else if (e.key === 'Escape' && floatBuf) { floatBuf = null; undo(); }
+});
+addEventListener('keyup', (e) => { if (e.code === 'Space') { spaceDown = false; wrap.style.cursor = ''; } });
+wrap.addEventListener('wheel', (e) => { e.preventDefault(); setZoom(zoom + (e.deltaY < 0 ? 1 : -1), true); }, { passive: false });
+
+// ---- load current / clear ----
+document.getElementById('clear').onclick = () => { pushUndo(); grid = Array.from({ length: H }, () => Array(W).fill(0)); elevation = Array.from({ length: H }, () => Array(W).fill(0)); ents = []; bldgs = []; editorStructures = []; saveStructuresLocal(); updateCount(); fitToScreen(); };
+document.getElementById('loadCur').onclick = () => {
+  if (typeof tiles === 'undefined') { alert('Could not load js/data.js and js/world.js — open this from the EF1 folder.'); return; }
+  if (!Array.isArray(tiles) || tiles.length < H || !Array.isArray(tiles[0]) || tiles[0].length < W) { alert('The current world map could not be read (js/world.js may need reloading — its tiles array is empty or malformed).'); return; }
+  pushUndo();
+  grid = tiles.map((r) => r.slice());
+  elevation = Array.from({ length: H }, () => Array(W).fill(0));
+  // buildings are floor + wallEdges only in the live game (no wall tiles painted), so just import the objects directly
+  bldgs = typeof buildings !== 'undefined' ? buildings.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h, doorX: b.doorX, style: b.style || 'heartwood' })) : [];
+  editorStructures = typeof AUTHORED_STRUCTURE_EDGES !== 'undefined'
+    ? AUTHORED_STRUCTURE_EDGES.map(normalizeEdge)
+    : [];
+  saveStructuresLocal();
+  ents = []; importEnts(); updateCount(); fitToScreen();
+};
+document.getElementById('importMap').onclick = () => document.getElementById('mapImport').click();
+document.getElementById('mapImport').onchange = async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  try {
+    const parsed = JSON.parse(await file.text());
+    if (parsed.format !== 'emberfall-map-editor' || ![1, 2].includes(parsed.version)) throw new Error('This is not an Emberfall map editor export.');
+    if (!Array.isArray(parsed.tiles) || parsed.tiles.length !== H || parsed.tiles.some((row) => !Array.isArray(row) || row.length !== W)) {
+      throw new Error(`Expected a ${W}x${H} tile map.`);
+    }
+    if (!Array.isArray(parsed.entities) || !Array.isArray(parsed.buildings) || !Array.isArray(parsed.edges)) {
+      throw new Error('The export is missing entities, buildings, or structure edges.');
+    }
+    pushUndo();
+    grid = parsed.tiles.map((row) => row.map((tile) => Number.isInteger(tile) ? tile : 0));
+    elevation = Array.isArray(parsed.elevation) && parsed.elevation.length === H
+      ? parsed.elevation.map((row) => Array.isArray(row) && row.length === W
+        ? row.map((value) => Math.max(-8, Math.min(20, Number.isInteger(value) ? value : 0)))
+        : Array(W).fill(0))
+      : Array.from({ length: H }, () => Array(W).fill(0));
+    ents = parsed.entities
+      .filter((ent) => ent && ENTITY_TYPES[ent.type] && Number.isInteger(ent.x) && Number.isInteger(ent.y))
+      .map((ent) => ({ type: ent.type, sub: ent.sub, x: ent.x, y: ent.y }));
+    bldgs = parsed.buildings
+      .filter((b) => b && Number.isInteger(b.x) && Number.isInteger(b.y) && Number.isInteger(b.w) && Number.isInteger(b.h))
+      .map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h, doorX: b.doorX, style: b.style || 'heartwood' }));
+    editorStructures = parsed.edges
+      .filter((edge) => edge && ['wall', 'fence', 'door'].includes(edge.type))
+      .map(normalizeEdge);
+    floatBuf = null;
+    saveStructuresLocal(); updateCount(); fitToScreen();
+    alert(`Imported ${file.name}`);
+  } catch (err) {
+    alert('Could not import map: ' + err.message);
+  }
+  e.target.value = '';
+};
+document.getElementById('importStructures').onclick = () => document.getElementById('structureImport').click();
+document.getElementById('structureImport').onchange = async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  try {
+    const parsed = JSON.parse(await file.text());
+    if (!Array.isArray(parsed.edges)) throw new Error('Missing edges array');
+    pushUndo();
+    editorStructures = parsed.edges
+      .filter((edge) => ['wall', 'fence', 'door'].includes(edge.type))
+      .map(normalizeEdge);
+    saveStructuresLocal(); updateCount(); draw();
+  } catch (err) { alert('Could not import structures: ' + err.message); }
+  e.target.value = '';
+};
+function importEnts() {
+  const add = (type, x, y, sub) => ents.push({ type, sub, x, y });
+  try { if (typeof NPCS !== 'undefined') NPCS.forEach((n) => add('npc', n.x, n.y, n.id)); } catch (e) {}
+  try { MONSTER_SPAWNS.forEach(([k, x, y]) => add('monster', x, y, k)); } catch (e) {}
+  try { FISH_SPOTS.forEach((f) => add('fish', f.x, f.y, f.item)); } catch (e) {}
+  try { ROCKS.forEach((r) => add('rock', r.x, r.y, r.ore)); } catch (e) {}
+  try { TREES.forEach((t) => add('tree', t.x, t.y)); } catch (e) {}
+  try { HUNT_SPOTS.forEach((h) => add('hunt', h.x, h.y)); } catch (e) {}
+  try { FARM_PATCHES.forEach((p) => add('farm', p.x, p.y)); } catch (e) {}
+  try { SIGNPOSTS.forEach((s) => add('signpost', s.x, s.y)); } catch (e) {}
+  try { BARROW_TABLETS.forEach((t) => add('tablet', t.x, t.y)); } catch (e) {}
+  try { PORTALS.forEach((p) => add('portal', p.x, p.y)); } catch (e) {}
+  try { add('forge', FORGE.x, FORGE.y); add('altar', ALTAR.x, ALTAR.y); add('workbench', WORKBENCH.x, WORKBENCH.y); add('cauldron', CAULDRON.x, CAULDRON.y); } catch (e) {}
+  try { add('chest', DUNGEON_CHEST.x, DUNGEON_CHEST.y); } catch (e) {}
+  add('spawn', 174, 44);
+}
+
+// ---- export (validated) ----
+function worldFile() {
+  const buildingsJS = bldgs.map((b) => `  { x: ${b.x}, y: ${b.y}, w: ${b.w}, h: ${b.h}, doorX: ${b.doorX}, style: '${b.style}' },`).join('\n');
+  const structuresJS = editorStructures.map((e) => `  { x1: ${e.x1}, y1: ${e.y1}, x2: ${e.x2}, y2: ${e.y2}, type: '${e.type}' },`).join('\n');
+  return `// Emberfall world.js — generated by the map editor. Tile-based collision.
+const _MAP = '${encodeTiles()}';
+const _DEC = {}; '${ENC}'.split('').forEach((ch, i) => (_DEC[ch] = i));
+const tiles = [];
+for (let y = 0; y < MAP_H; y++) { const row = []; for (let x = 0; x < MAP_W; x++) row.push(_DEC[_MAP[y * MAP_W + x]]); tiles.push(row); }
+const buildings = [
+${buildingsJS}
+];
+const structureEdges = [
+${structuresJS}
+];
+const wallEdges = [], wallEdgeSet = new Set();
+function edgeKey(x1, y1, x2, y2) { return x1 < x2 || (x1 === x2 && y1 < y2) ? (x1 + ',' + y1 + '|' + x2 + ',' + y2) : (x2 + ',' + y2 + '|' + x1 + ',' + y1); }
+function addWallEdge(x1, y1, x2, y2) { const key = edgeKey(x1, y1, x2, y2); if (wallEdgeSet.has(key)) return; wallEdgeSet.add(key); wallEdges.push({ x1, y1, x2, y2 }); }
+for (const e of structureEdges) if (e.type !== 'door') addWallEdge(e.x1, e.y1, e.x2, e.y2);
+for (const b of buildings) {
+  for (let xx = b.x; xx < b.x + b.w; xx++) { addWallEdge(xx, b.y, xx, b.y - 1); if (xx !== b.doorX) addWallEdge(xx, b.y + b.h - 1, xx, b.y + b.h); }
+  for (let yy = b.y; yy < b.y + b.h; yy++) { addWallEdge(b.x, yy, b.x - 1, yy); addWallEdge(b.x + b.w - 1, yy, b.x + b.w, yy); }
+}
+const WALKABLE = new Set(${JSON.stringify(WALKABLE_TILES)});
+function walkable(x, y) { return x >= 0 && y >= 0 && x < MAP_W && y < MAP_H && WALKABLE.has(tiles[y][x]); }
+function canStep(x1, y1, x2, y2) { return walkable(x2, y2) && !wallEdgeSet.has(edgeKey(x1, y1, x2, y2)); }
+function nearestWalkable(x, y) {
+  if (walkable(x, y)) return { x, y };
+  for (let r = 1; r < 14; r++) for (let yy = y - r; yy <= y + r; yy++) for (let xx = x - r; xx <= x + r; xx++) if (walkable(xx, yy)) return { x: xx, y: yy };
+  return null;
+}
+function findPath(sx, sy, gx, gy) {
+  const goal = nearestWalkable(gx, gy); if (!goal) return []; gx = goal.x; gy = goal.y;
+  const key = (x, y) => x + ',' + y, open = [{ x: sx, y: sy, g: 0, f: 0 }], came = new Map(), cost = new Map([[key(sx, sy), 0]]),
+    dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  while (open.length) {
+    open.sort((a, b) => a.f - b.f); const cur = open.shift();
+    if (cur.x === gx && cur.y === gy) { const path = []; let k = key(gx, gy), p = { x: gx, y: gy }; while (k !== key(sx, sy)) { path.unshift(p); p = came.get(k); k = key(p.x, p.y); } return path; }
+    for (const [dX, dY] of dirs) { const x = cur.x + dX, y = cur.y + dY; if (!canStep(cur.x, cur.y, x, y)) continue; const ng = cur.g + 1, k = key(x, y); if (ng < (cost.get(k) ?? Infinity)) { cost.set(k, ng); came.set(k, { x: cur.x, y: cur.y }); open.push({ x, y, g: ng, f: ng + Math.abs(x - gx) + Math.abs(y - gy) }); } }
+  }
+  return [];
+}
+`;
+}
+function structuresFile() {
+  return JSON.stringify({
+    version: 1,
+    tile_size: 1.5,
+    edges: editorStructures,
+  }, null, 2);
+}
+function editorMapFile() {
+  return JSON.stringify({
+    format: 'emberfall-map-editor',
+    version: 2,
+    width: W,
+    height: H,
+    tile_size: 1.5,
+    tiles: grid,
+    elevation,
+    entities: ents,
+    buildings: bldgs,
+    edges: editorStructures,
+  }, null, 2);
+}
+function byType(t) { return ents.filter((e) => e.type === t); }
+const ROCK_DEF = { copperOre: ['Copper rock', 1, 12, '#b87343'], ironOre: ['Iron rock', 5, 22, '#8d8174'], coal: ['Coal rock', 10, 28, '#2c2c2c'], mithrilOre: ['Mithril rock', 20, 55, '#4a6b8a'] };
+const FISH_DEF = { rawFish: ['River fishing spot', 'riverfish', 1, 12], rawEel: ['Marsh eel spot', 'marsh eel', 3, 22] };
+function entFile() {
+  const L = [];
+  L.push('// ==== Paste these into data.js, replacing the matching arrays/consts. ====');
+  const sp = byType('spawn')[0];
+  if (sp) L.push(`// SPAWN POINT: set the player start to (${sp.x}, ${sp.y}) in game1.js (fresh x/y) and game3.js (respawn/home).`);
+  const ms = byType('monster'); if (ms.length) L.push('const MONSTER_SPAWNS = [\n' + ms.map((e) => `  ['${e.sub}', ${e.x}, ${e.y}],`).join('\n') + '\n];');
+  const fs = byType('fish'); if (fs.length) L.push('const FISH_SPOTS = [\n' + fs.map((e, i) => { const d = FISH_DEF[e.sub] || FISH_DEF.rawFish; return `  { id: 'fish${i + 1}', x: ${e.x}, y: ${e.y}, name: '${d[0]}', item: '${e.sub}', catchName: '${d[1]}', level: ${d[2]}, xp: ${d[3]}, chance: 0.8 },`; }).join('\n') + '\n];');
+  const rk = byType('rock'); if (rk.length) L.push('const ROCKS = [\n' + rk.map((e, i) => { const d = ROCK_DEF[e.sub] || ROCK_DEF.copperOre; return `  { id: 'rock${i + 1}', x: ${e.x}, y: ${e.y}, ore: '${e.sub}', name: '${d[0]}', level: ${d[1]}, xp: ${d[2]}, color: '${d[3]}' },`; }).join('\n') + '\n];');
+  const tr = byType('tree'); if (tr.length) L.push('const TREES = [\n' + tr.map((e, i) => `  { id: 'tree${i + 1}', x: ${e.x}, y: ${e.y}, name: 'Tree', level: 1, xp: 14 },`).join('\n') + '\n];');
+  const hs = byType('hunt'); if (hs.length) L.push('const HUNT_SPOTS = [\n' + hs.map((e, i) => `  { id: 'burrow${i + 1}', x: ${e.x}, y: ${e.y}, name: 'Rabbit burrow', level: 1, xp: 20 },`).join('\n') + '\n];');
+  const fm = byType('farm'); if (fm.length) L.push('const FARM_PATCHES = [\n' + fm.map((e, i) => `  { id: 'farm${i + 1}', x: ${e.x}, y: ${e.y}, name: 'Farm patch' },`).join('\n') + '\n];');
+  const sg = byType('signpost'); if (sg.length) L.push('const SIGNPOSTS = [\n' + sg.map((e, i) => `  { id: 'sign${i + 1}', x: ${e.x}, y: ${e.y}, name: 'Road sign', text: 'Edit this signpost text.' },`).join('\n') + '\n];');
+  const tb = byType('tablet'); if (tb.length) L.push('const BARROW_TABLETS = [\n' + tb.map((e, i) => `  { id: 'tablet${i + 1}', x: ${e.x}, y: ${e.y}, name: 'Barrow tablet', text: 'Edit this inscription.' },`).join('\n') + '\n];');
+  const pt = byType('portal'); if (pt.length) L.push('const PORTALS = [\n' + pt.map((e) => `  { x: ${e.x}, y: ${e.y}, toX: 0, toY: 0, label: 'Portal — set toX/toY' },`).join('\n') + '\n];');
+  const one = (t, name) => { const e = byType(t)[0]; if (e) L.push(`const ${name} = { x: ${e.x}, y: ${e.y}, name: '${name}' };`); };
+  one('forge', 'FORGE'); one('altar', 'ALTAR'); one('workbench', 'WORKBENCH'); one('cauldron', 'CAULDRON');
+  const ch = byType('chest')[0]; if (ch) L.push(`const DUNGEON_CHEST = { x: ${ch.x}, y: ${ch.y}, name: 'Warden chest' };`);
+  const npcs = byType('npc'); if (npcs.length) L.push('// NPC POSITIONS — update each NPC x/y in the NPCS array of data.js:\n' + npcs.map((e) => `//   ${e.sub}: (${e.x}, ${e.y})`).join('\n'));
+  return L.join('\n\n');
+}
+document.getElementById('export').onclick = () => {
+  const wtxt = worldFile(), etxt = entFile(), stxt = structuresFile(), maptxt = editorMapFile();
+  document.getElementById('outWorld').value = wtxt;
+  document.getElementById('outEnt').value = etxt;
+  document.getElementById('outStructures').value = stxt;
+  const dl = (name, txt) => { const b = new Blob([txt], { type: 'text/plain' }); const u = URL.createObjectURL(b); return `<a class="dl" href="${u}" download="${name}">⬇ download ${name}</a>`; };
+  document.getElementById('dllinks').innerHTML = dl('emberfall_map.json', maptxt) + ' &nbsp; ' + dl('world.js', wtxt) + ' &nbsp; ' + dl('entities.txt', etxt) + ' &nbsp; ' + dl('world_structures.json', stxt);
+  document.getElementById('modal').classList.add('on');
+};
+document.getElementById('closeModal').onclick = () => document.getElementById('modal').classList.remove('on');
+
+// ---- init ----
+try {
+  const savedStructures = JSON.parse(localStorage.getItem('ef_world_structures') || '[]');
+  editorStructures = Array.isArray(savedStructures) && savedStructures.length
+    ? savedStructures.map(normalizeEdge)
+    : (typeof AUTHORED_STRUCTURE_EDGES !== 'undefined' ? AUTHORED_STRUCTURE_EDGES.map(normalizeEdge) : []);
+} catch (e) {}
+updateCount();
+resize();
+if (document.readyState === 'complete') { fitToScreen(); }
+else addEventListener('load', () => { resize(); fitToScreen(); });
+setTimeout(() => { resize(); fitToScreen(); }, 80);
+</script>
+</body></html>

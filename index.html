@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Emberfall</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="wrap">
+  <div id="left">
+    <div id="tut" style="display:none"></div>
+    <canvas id="game" width="640" height="480"></canvas>
+    <div id="chat"></div>
+  </div>
+  <div id="side">
+    <div id="topstats"></div>
+    <div id="tabs">
+      <button class="tab active" data-tab="inv">🎒 Items</button>
+      <button class="tab" data-tab="smith">⚒️ Smith</button>
+      <button class="tab" data-tab="stats">📊 Skills</button>
+      <button class="tab" data-tab="settings">⚙️</button>
+    </div>
+    <div id="panel"></div>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/world.js"></script>
+<script src="js/render.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

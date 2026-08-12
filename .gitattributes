@@ -1,0 +1,20 @@
+# Normalize line endings; let git detect text vs binary automatically
+* text=auto
+
+# Explicitly treat these as binary (no line-ending conversion / no text diff)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.glb binary
+*.gltf binary
+*.fbx binary
+*.dae binary
+*.obj binary
+*.mtl binary
+*.blend binary
+*.zip binary
+*.bin binary
+*.wav binary
+*.mp3 binary
+*.ogg binary

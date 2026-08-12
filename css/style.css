@@ -1,0 +1,87 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: radial-gradient(1200px 700px at 50% -100px, #2a2419, #120e09);
+  color: #ff981f;
+  font-family: "Trebuchet MS", Verdana, sans-serif;
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+  user-select: none;
+}
+#wrap { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+#left { display: flex; flex-direction: column; gap: 6px; max-width: 100%; }
+canvas {
+  border: 3px solid #6a5c40; border-radius: 4px; cursor: crosshair;
+  background: #000; box-shadow: 0 3px 18px rgba(0,0,0,.65);
+  max-width: 100%; height: auto; touch-action: manipulation;
+}
+#chat {
+  width: 640px; max-width: 100%; height: 96px; overflow-y: auto;
+  background: linear-gradient(#332c20, #241f15); border: 2px solid #5c5142; border-radius: 3px;
+  padding: 4px 8px; font-size: 12px; line-height: 1.5;
+  box-shadow: inset 0 0 14px rgba(0,0,0,.5);
+}
+#chat div { color: #d8c9a3; }
+#side {
+  width: 300px; max-width: 100%; background: linear-gradient(#332c20, #241f15); border: 3px solid #5c5142;
+  border-radius: 4px; padding: 8px; display: flex; flex-direction: column; gap: 8px;
+  box-shadow: inset 0 0 14px rgba(0,0,0,.5), 0 2px 8px rgba(0,0,0,.5);
+}
+#topstats { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 13px; }
+.stat {
+  background: linear-gradient(#443b2d, #37301f); border: 1px solid #5c5142; border-radius: 3px;
+  padding: 4px 8px; color: #ffd23f;
+}
+.stat small { color: #b8a888; }
+#hpbarwrap { grid-column: span 2; background: linear-gradient(#443b2d, #37301f); border: 1px solid #5c5142; border-radius: 3px; padding: 4px 8px; }
+#hpbar { height: 10px; background: #4a1010; border-radius: 2px; margin-top: 3px; overflow: hidden; }
+#hpfill { height: 100%; background: #2fb52f; transition: width .2s; }
+#tabs { display: flex; gap: 4px; }
+.tab {
+  flex: 1; background: linear-gradient(#4a4033, #352d22); color: #ff981f; border: 2px solid #5c5142;
+  padding: 6px 0; cursor: pointer; font-family: inherit; font-size: 13px; border-radius: 3px;
+}
+.tab:hover { background: linear-gradient(#564b3c, #3e352a); }
+.tab.active { background: linear-gradient(#6a5c42, #4a4033); color: #ffd23f; box-shadow: 0 0 8px rgba(255,210,63,.25); }
+#panel { min-height: 340px; font-size: 13px; }
+.eqrow { display: flex; gap: 6px; margin-bottom: 8px; }
+.eqslot {
+  flex: 1; background: linear-gradient(#443b2d, #37301f); border: 2px solid #5c5142; border-radius: 3px;
+  padding: 6px; text-align: center; cursor: pointer; min-height: 52px;
+}
+.eqslot:hover { border-color: #8a7a5c; }
+.eqslot .lbl { font-size: 10px; color: #b8a888; }
+#invgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.islot {
+  background: linear-gradient(#443b2d, #37301f); border: 1px solid #5c5142; border-radius: 3px;
+  padding: 4px 2px; text-align: center; cursor: pointer; position: relative;
+  min-height: 46px;
+}
+.islot:hover { border-color: #ffd23f; }
+.islot .ic { font-size: 20px; }
+.islot .qty {
+  position: absolute; top: 1px; right: 3px; font-size: 10px; color: #ffff00;
+  text-shadow: 1px 1px 0 #000;
+}
+.islot .nm { font-size: 9px; color: #d8c9a3; line-height: 1.1; display: block; }
+.row {
+  display: flex; align-items: center; gap: 6px; padding: 4px 6px;
+  background: linear-gradient(#443b2d, #37301f); border: 1px solid #5c5142; border-radius: 3px; margin-bottom: 4px;
+}
+.row .grow { flex: 1; color: #d8c9a3; }
+.btn {
+  background: #5c5142; color: #ffd23f; border: 1px solid #8a7a5c;
+  padding: 3px 8px; cursor: pointer; font-family: inherit; font-size: 11px; border-radius: 3px;
+}
+.btn:hover:not(:disabled) { background: #6e6250; }
+.btn:disabled { opacity: .35; cursor: default; }
+h4 { color: #ffd23f; margin: 6px 0 4px; font-size: 13px; }
+.hint { color: #b8a888; font-size: 11px; margin-top: 6px; line-height: 1.4; }
+#tut {
+  width: 640px; max-width: 100%; background: linear-gradient(#3a3226, #2b2519);
+  border: 2px solid #ffd23f; border-radius: 4px; padding: 8px 10px;
+  font-size: 13px; display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 0 12px rgba(255,210,63,.25);
+}
+#tut .step { background: #5c5142; border-radius: 10px; padding: 2px 9px; font-size: 11px; color: #fff; white-space: nowrap; }
+#tut .grow { flex: 1; color: #f0e0b0; line-height: 1.35; }

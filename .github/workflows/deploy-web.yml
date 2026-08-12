@@ -1,0 +1,78 @@
+name: Deploy Emberfall 3D (Web) to GitHub Pages
+
+# Builds the Godot project at EF1/godot into an HTML5 web build and publishes it
+# to GitHub Pages, so the 3D game is playable in a browser with no Godot install.
+#
+# One-time setup on GitHub after this file is pushed:
+#   Settings -> Pages -> Build and deployment -> Source: "GitHub Actions"
+# Then the game goes live at: https://<your-user>.github.io/Emberfall/
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "EF1/godot/**"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.7.1"
+  PROJECT_DIR: EF1/godot
+  BUILD_DIR: EF1/godot/build/web
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Godot ${{ env.GODOT_VERSION }} (+ export templates)
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+          include-templates: true
+
+      - name: Show Godot version
+        run: godot --version
+
+      - name: Export Web build
+        run: |
+          mkdir -p "${BUILD_DIR#EF1/godot/}" || true
+          cd "$PROJECT_DIR"
+          mkdir -p build/web
+          echo "== First pass: import resources (may report errors, that's expected) =="
+          godot --headless --export-release "Web" build/web/index.html || true
+          echo "== Second pass: real export =="
+          godot --headless --export-release "Web" build/web/index.html
+          echo "== Output =="
+          ls -la build/web
+
+      - name: Disable Jekyll (serve files as-is)
+        run: touch "$BUILD_DIR/.nojekyll"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ env.BUILD_DIR }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

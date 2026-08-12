@@ -1,0 +1,4447 @@
+﻿const fresh = {
+  name: 'Wanderer',
+  x: 96,
+  y: 128,
+  hp: 10,
+  maxHp: 10,
+  gold: 30,
+  xp: {
+    Attack: 0,
+    Strength: 0,
+    Defence: 0,
+    Ranged: 0,
+    Magic: 0,
+    Prayer: 0,
+    Slayer: 0,
+    Crafting: 0,
+    Thieving: 0,
+    Herblore: 0,
+    Farming: 0,
+    Hunter: 0,
+    Fletching: 0,
+    Hitpoints: 0,
+    Fishing: 0,
+    Cooking: 0,
+    Mining: 0,
+    Smithing: 0,
+    Woodcutting: 0,
+    Firemaking: 0,
+  },
+  inv: { bread: 2 },
+  equipment: { weapon: 'sword', armor: null, shield: null, gloves: null },
+  combatStyle: 'accurate',
+  selectedSpell: 'emberStrike',
+  activePrayer: null,
+  prayerPoints: 1,
+  runEnergy: 100,
+  runEnabled: false,
+  specEnergy: 100,
+  specArmed: false,
+  nextAttackTick: 0,
+  bank: {},
+  story: { q: 0, step: 0 },
+  tutorialStage: 0,
+  contract: null,
+  grave: null,
+  farm: {},
+  homeTeleportAt: 0,
+  roadsideBlessAt: 0,
+  poison: 0,
+  poisonNext: 0,
+  discoveredRegions: { Heartwood: true },
+  explorerRewarded: false,
+  barrowGateOpen: false,
+  chestLooted: false,
+  barrowRuns: 0,
+  wardenKillsClaimed: 0,
+  barrowRunStartedAt: 0,
+  barrowBestMs: 0,
+  barrowLastMs: 0,
+  barrowPotential: 0,
+  barrowBestPotential: 0,
+  collection: { barrow: { cloak: false, guard: false, lantern: false } },
+  barrowLore: {},
+  kills: 0,
+  killLog: {},
+  sideQuests: {
+    boarHunt: { step: 0, kills: 0 },
+    silkAndCinders: { step: 0, kills: 0 },
+    brokenRoad: { step: 0, kills: 0 },
+    hearthAndHome: { step: 0 },
+    cureMirehaven: { step: 0 },
+  },
+  tally: {},
+  starterClaimed: {},
+};
+let player = Object.assign(
+    structuredClone(fresh),
+    JSON.parse(localStorage.getItem('emberfall-ef1') || 'null') || {},
+  ),
+  path = [],
+  destination = null,
+  pending = null,
+  tickCount = 0,
+  combat = null,
+  drops = [],
+  activeTab = 'inventory',
+  bankAmount = 'all';
+const ADMIN_CODE = '1234'; // passcode to enter admin mode
+let journalTab = 'quests';
+let admin = false;
+try {
+  admin = localStorage.getItem('emberfall-ef1-admin') === '1';
+} catch (e) {}
+if (player.visualGroundVersion !== 3) {
+  // World rebuilt (5x, new regions) — move any existing save to the new Greenrest spawn.
+  player.x = fresh.x;
+  player.y = fresh.y;
+  player.visualGroundVersion = 3;
+  localStorage.setItem('emberfall-ef1', JSON.stringify(player));
+}
+player.drawX = player.x;
+player.drawY = player.y;
+player.facing = 'south';
+let moveSegment = null,
+  lastMoveFrame = performance.now(),
+  energyCarry = 0;
+const WALK_TILE_MS = 185,
+  RUN_TILE_MS = 105;
+if (!player.story) player.story = { q: 0, step: 0 };
+if (player.tutorialStage === undefined)
+  player.tutorialStage = player.story.q > 0 || player.story.step > 0 ? 3 : 0;
+if (player.contract === undefined) player.contract = null;
+if (player.grave === undefined) player.grave = null;
+if (!player.farm) player.farm = {};
+if (!player.homeTeleportAt) player.homeTeleportAt = 0;
+if (!player.roadsideBlessAt) player.roadsideBlessAt = 0;
+if (!player.poison) player.poison = 0;
+if (!player.poisonNext) player.poisonNext = 0;
+if (!player.discoveredRegions) player.discoveredRegions = { Heartwood: true };
+if (player.explorerRewarded === undefined) player.explorerRewarded = false;
+if (player.barrowGateOpen === undefined) player.barrowGateOpen = false;
+tiles[DUNGEON_GATE.y][DUNGEON_GATE.x] = player.barrowGateOpen ? 5 : 4;
+if (!player.equipment) player.equipment = { weapon: null, armor: null };
+if (player.equipment.armor === undefined) player.equipment.armor = null;
+if (player.equipment.shield === undefined) player.equipment.shield = null;
+if (player.equipment.gloves === undefined) player.equipment.gloves = null;
+if (player.equipment.armor === 'shield' && !player.equipment.shield) {
+  player.equipment.shield = 'shield';
+  player.equipment.armor = null;
+}
+if (!player.combatStyle) player.combatStyle = 'accurate';
+if (!player.selectedSpell) player.selectedSpell = 'emberStrike';
+if (player.activePrayer === undefined) player.activePrayer = null;
+if (player.prayerPoints === undefined) player.prayerPoints = 1;
+if (player.runEnergy === undefined) player.runEnergy = 100;
+if (player.runEnabled === undefined) player.runEnabled = false;
+if (player.chestLooted === undefined) player.chestLooted = false;
+if (player.barrowRuns === undefined) player.barrowRuns = player.chestLooted ? 1 : 0;
+if (player.wardenKillsClaimed === undefined)
+  player.wardenKillsClaimed = player.chestLooted ? player.killLog?.warden || 1 : 0;
+if (!player.barrowRunStartedAt) player.barrowRunStartedAt = 0;
+if (!player.barrowBestMs) player.barrowBestMs = 0;
+if (!player.barrowLastMs) player.barrowLastMs = 0;
+if (!player.barrowPotential) player.barrowPotential = 0;
+if (!player.barrowBestPotential) player.barrowBestPotential = 0;
+if (!player.collection)
+  player.collection = { barrow: { cloak: !!player.chestLooted, guard: false, lantern: false } };
+if (!player.collection.barrow)
+  player.collection.barrow = { cloak: !!player.chestLooted, guard: false, lantern: false };
+if (player.chestLooted) player.collection.barrow.cloak = true;
+if (!player.barrowLore) player.barrowLore = {};
+if (!player.killLog) player.killLog = {};
+if (!player.sideQuests) player.sideQuests = {};
+if (!player.sideQuests.boarHunt) player.sideQuests.boarHunt = { step: 0, kills: 0 };
+if (!player.sideQuests.silkAndCinders) player.sideQuests.silkAndCinders = { step: 0, kills: 0 };
+if (!player.sideQuests.brokenRoad) player.sideQuests.brokenRoad = { step: 0, kills: 0 };
+if (!player.sideQuests.hearthAndHome) player.sideQuests.hearthAndHome = { step: 0 };
+if (!player.sideQuests.cureMirehaven) player.sideQuests.cureMirehaven = { step: 0 };
+if (!player.tally) player.tally = {};
+if (!player.starterClaimed) player.starterClaimed = {};
+if (player.specEnergy === undefined) player.specEnergy = 100;
+if (player.specArmed === undefined) player.specArmed = false;
+if (player.nextAttackTick === undefined) player.nextAttackTick = 0;
+// Self-heal a save wedged on the intro fishing/cooking steps.
+if (player.story.q === 0 && player.story.step === 2 && invCount('rawFish')) player.story.step = 3;
+if (player.story.q === 0 && player.story.step === 3 && invCount('fish')) player.story.step = 4;
+for (const k of [
+  'Strength',
+  'Defence',
+  'Ranged',
+  'Magic',
+  'Prayer',
+  'Slayer',
+  'Crafting',
+  'Thieving',
+  'Herblore',
+  'Farming',
+  'Hunter',
+  'Fletching',
+  'Mining',
+  'Smithing',
+  'Woodcutting',
+  'Firemaking',
+])
+  if (player.xp[k] === undefined) player.xp[k] = 0;
+TREES.forEach((t) => {
+  t.depletedUntil = 0;
+  t.chops = 0;
+});
+let effects = [],
+  projectiles = [],
+  hazards = [],
+  fires = [],
+  lastActionAt = 0,
+  actionDuration = 2400,
+  lastRegion = '',
+  skilling = null;
+NPCS.forEach((n) => {
+  n.homeX = n.x;
+  n.homeY = n.y;
+  n.drawX = n.x;
+  n.drawY = n.y;
+  n.fromX = n.x;
+  n.fromY = n.y;
+  n.moveAt = 0;
+  n.pickpocketUntil = 0;
+  n.speech = null;
+  n.speechUntil = 0;
+  if (n.wander === undefined) n.wander = 2; // EF1: every NPC gets a small roam radius
+});
+const monsters = MONSTER_SPAWNS.map(([kind, x, y], id) => ({
+  id,
+  kind,
+  x,
+  y,
+  drawX: x,
+  drawY: y,
+  fromX: x,
+  fromY: y,
+  moveAt: 0,
+  spawnX: x,
+  spawnY: y,
+  type: MONSTER_TYPES[kind],
+  hp: MONSTER_TYPES[kind].hp,
+  maxHp: MONSTER_TYPES[kind].hp,
+  alive: true,
+  respawn: 0,
+  lastAttack: 0,
+  attackAt: 0,
+  enraged: false,
+}));
+const INVENTORY_SLOTS = 20;
+let knownLevels = {},
+  saveStatusTimer = null;
+// EF1: OSRS-style exponential XP curve (was a flat 1+sqrt(xp/50)).
+// XP_TABLE[n] = total XP required to reach level n+1. Level 99 ~= 13,034,431 XP.
+const XP_TABLE = (() => {
+  const t = [0];
+  let acc = 0;
+  for (let lv = 1; lv < 99; lv++) {
+    acc += Math.floor(lv + 300 * Math.pow(2, lv / 7));
+    t.push(Math.floor(acc / 4));
+  }
+  return t;
+})();
+function xpForLevel(lv) {
+  return XP_TABLE[Math.max(0, Math.min(98, lv - 1))];
+}
+function level(skill) {
+  const xp = player.xp[skill] || 0;
+  for (let lv = 98; lv >= 1; lv--) if (xp >= XP_TABLE[lv]) return lv + 1;
+  return 1;
+}
+function formatRunTime(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000)),
+    m = Math.floor(total / 60),
+    sec = total % 60,
+    tenths = Math.floor((Math.max(0, ms) % 1000) / 100);
+  return `${m}:${String(sec).padStart(2, '0')}.${tenths}`;
+}
+function combatLevel() {
+  const base = (level('Defence') + level('Hitpoints') + Math.floor(level('Prayer') / 2)) / 4,
+    melee = (level('Attack') + level('Strength')) * 0.325,
+    ranged = level('Ranged') * 0.4875,
+    magic = level('Magic') * 0.4875;
+  return Math.max(3, Math.floor(base + Math.max(melee, ranged, magic)));
+}
+function syncLevels(silent = false) {
+  for (const skill of Object.keys(player.xp)) {
+    const current = level(skill),
+      previous = knownLevels[skill] || current;
+    if (current > previous && !silent) {
+      const banner = document.getElementById('levelBanner');
+      banner.innerHTML = `<b>Level up!</b>${skill} is now level ${current}`;
+      banner.classList.remove('show');
+      void banner.offsetWidth;
+      banner.classList.add('show');
+      setTimeout(() => banner.classList.remove('show'), 2600);
+      message(`Congratulations, your ${skill} level is now ${current}!`, 'good');
+      if (window.SFX) SFX.play('level');
+    }
+    knownLevels[skill] = current;
+  }
+  const newMax = 9 + level('Hitpoints');
+  if (newMax > player.maxHp) {
+    player.hp = Math.min(newMax, player.hp + (newMax - player.maxHp));
+    player.maxHp = newMax;
+  } else player.maxHp = newMax;
+}
+function invCount(id) {
+  return player.inv[id] || 0;
+}
+function canAdd(id) {
+  return invCount(id) > 0 || Object.keys(player.inv).length < INVENTORY_SLOTS;
+}
+function add(id, n = 1, force = false) {
+  if (n > 0 && !force && !canAdd(id)) return false;
+  player.inv[id] = (player.inv[id] || 0) + n;
+  if (player.inv[id] <= 0) delete player.inv[id];
+  return true;
+}
+function save() {
+  const clean = { ...player };
+  delete clean.drawX;
+  delete clean.drawY;
+  localStorage.setItem('emberfall-ef1', JSON.stringify(clean));
+  const status = document.getElementById('saveStatus');
+  if (status) {
+    status.textContent = 'Saved just now';
+    status.classList.add('show');
+    clearTimeout(saveStatusTimer);
+    saveStatusTimer = setTimeout(() => status.classList.remove('show'), 1400);
+  }
+}
+function message(text, kind = '') {
+  const c = document.getElementById('chat'),
+    time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  c.insertAdjacentHTML(
+    'beforeend',
+    `<div><span class="time">[${time}]</span> <span class="${kind}">${text}</span></div>`,
+  );
+  while (c.children.length > 120) c.firstElementChild.remove();
+  c.scrollTop = c.scrollHeight;
+}
+// Tutorial overlay removed — starter quests now teach the skills. Kept as no-ops so
+// existing call sites stay harmless.
+function renderTutorial() {}
+function advanceTutorial(stage) {}
+function setPath(x, y, action = null) {
+  const p = findPath(player.x, player.y, x, y);
+  if (!p.length && !(player.x === x && player.y === y)) {
+    message('I cannot reach that.', 'bad');
+    return;
+  }
+  path = p;
+  moveSegment = null;
+  destination = p[p.length - 1] || { x, y };
+  pending = action;
+  combat = null;
+  skilling = null;
+  closeModal();
+  if (p.length) advanceTutorial(0);
+}
+function tileDistance(a, b) {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+}
+function adjacent(a, b) {
+  return tileDistance(a, b) <= 1;
+}
+function combatRange() {
+  const w = ITEMS[player.equipment.weapon] || {};
+  return w.range || 1;
+}
+function engageMonster(m) {
+  skilling = null;
+  combat = m;
+  const range = combatRange();
+  if (tileDistance(player, m) <= range) {
+    path = [];
+    moveSegment = null;
+    pending = null;
+    destination = null;
+    message(`You attack the ${m.type.name}.`);
+    return;
+  }
+  moveWithinRange(m, range, () => {
+    combat = m;
+    message(`You attack the ${m.type.name}.`);
+  });
+}
+function moveWithinRange(target, range, action) {
+  let best = null;
+  for (let y = Math.max(0, target.y - range); y <= Math.min(MAP_H - 1, target.y + range); y++)
+    for (let x = Math.max(0, target.x - range); x <= Math.min(MAP_W - 1, target.x + range); x++) {
+      if (tileDistance({ x, y }, target) > range || !walkable(x, y)) continue;
+      const p = findPath(player.x, player.y, x, y);
+      if ((p.length || (player.x === x && player.y === y)) && (!best || p.length < best.length))
+        best = p;
+    }
+  if (!best) return message('I cannot get into attack range.', 'bad');
+  path = best;
+  moveSegment = null;
+  destination = best[best.length - 1] || { x: player.x, y: player.y };
+  pending = action;
+}
+function moveAdjacent(target, action) {
+  skilling = null;
+  combat = null;
+  if (adjacent(player, target)) return action();
+  let best = null;
+  for (const [dX, dY] of [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ]) {
+    const x = target.x + dX,
+      y = target.y + dY;
+    if (!walkable(x, y)) continue;
+    const p = findPath(player.x, player.y, x, y);
+    if (p.length && (!best || p.length < best.length)) best = p;
+  }
+  if (!best) return message('I cannot get close enough.', 'bad');
+  path = best;
+  moveSegment = null;
+  destination = best[best.length - 1];
+  pending = action;
+}
+function movementFrame(now) {
+  if (admin) {
+    // Admin mode: always running, energy never drains.
+    player.runEnabled = true;
+    player.runEnergy = 100;
+  }
+  const dt = Math.min(100, now - lastMoveFrame),
+    runningNow = !!moveSegment && moveSegment.running;
+  if (!runningNow && player.runEnergy < 100) {
+    energyCarry += dt / 1200;
+    if (energyCarry >= 1) {
+      const gain = Math.floor(energyCarry);
+      player.runEnergy = Math.min(100, player.runEnergy + gain);
+      energyCarry -= gain;
+    }
+  }
+  if (!moveSegment && path.length) {
+    const n = path.shift(),
+      running = player.runEnabled && player.runEnergy >= 1;
+    moveSegment = {
+      sx: player.drawX,
+      sy: player.drawY,
+      tx: n.x,
+      ty: n.y,
+      start: now,
+      duration: running ? RUN_TILE_MS : WALK_TILE_MS,
+      running,
+    };
+    if (running && !admin) {
+      player.runEnergy = Math.max(0, player.runEnergy - 1);
+      if (player.runEnergy === 0) {
+        player.runEnabled = false;
+        message('You are out of run energy.', 'bad');
+      }
+    }
+    const dx = n.x - player.x,
+      dy = n.y - player.y;
+    player.facing =
+      Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : dy > 0 ? 'south' : 'north';
+    player.x = n.x;
+    player.y = n.y;
+  }
+  if (moveSegment) {
+    const p = Math.min(1, (now - moveSegment.start) / moveSegment.duration),
+      ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+    player.drawX = moveSegment.sx + (moveSegment.tx - moveSegment.sx) * ease;
+    player.drawY = moveSegment.sy + (moveSegment.ty - moveSegment.sy) * ease;
+    if (p >= 1) {
+      player.drawX = moveSegment.tx;
+      player.drawY = moveSegment.ty;
+      moveSegment = null;
+      checkRegion();
+      if (!path.length) {
+        destination = null;
+        const fn = pending;
+        pending = null;
+        if (fn) fn();
+      }
+    }
+  }
+  lastMoveFrame = now;
+  requestAnimationFrame(movementFrame);
+}
+requestAnimationFrame(movementFrame);
+function gameTick() {
+  tickCount++;
+  syncLevels();
+  if (combat) combatTick();
+  if (skilling) skillTick();
+  prayerTick();
+  poisonTick();
+  specTick();
+  hazardTick();
+  resourceTick();
+  npcTick();
+  monsterTick();
+  respawnTick();
+  updateUI();
+  if (tickCount % 10 === 0) save();
+}
+function maxPrayer() {
+  return level('Prayer');
+}
+function specTick() {
+  // Special-attack energy regenerates ~10% every 3 ticks (full in ~18s).
+  if (player.specEnergy < 100 && tickCount % 3 === 0) {
+    player.specEnergy = Math.min(100, player.specEnergy + 5);
+  }
+}
+function toggleSpec() {
+  const weapon = ITEMS[player.equipment.weapon] || {};
+  if (!weapon.spec) return message('Your weapon has no special attack.', 'bad');
+  if (player.specEnergy < 50)
+    return message('Not enough special-attack energy (need 50%).', 'bad');
+  player.specArmed = !player.specArmed;
+  message(
+    player.specArmed
+      ? 'Special attack armed — your next hit unleashes it.'
+      : 'Special attack disarmed.',
+    'game',
+  );
+  updateUI();
+}
+function prayerTick() {
+  if (!player.activePrayer) return;
+  if (player.prayerPoints <= 0) {
+    player.activePrayer = null;
+    message('You have run out of Prayer points.', 'bad');
+    renderPanel();
+    return;
+  }
+  if (tickCount % 5 === 0) {
+    player.prayerPoints--;
+    if (player.prayerPoints <= 0) {
+      player.activePrayer = null;
+      message('Your prayer fades.', 'bad');
+    }
+    renderPanel();
+  }
+}
+function poisonTick() {
+  if (!player.poison) return;
+  if (admin) return (player.poison = 0);
+  if (tickCount < player.poisonNext) return;
+  player.poisonNext = tickCount + 10;
+  player.poison--;
+  player.hp = Math.max(0, player.hp - 1);
+  effects.push({
+    x: player.drawX,
+    y: player.drawY,
+    value: 1,
+    color: '#72b94f',
+    at: performance.now(),
+  });
+  message(
+    `Poison damages you. ${player.poison ? player.poison + ' dose' + (player.poison === 1 ? '' : 's') + ' remain.' : 'The poison has worn off.'}`,
+    player.poison ? 'bad' : 'good',
+  );
+  updateUI();
+  if (player.hp <= 0) death();
+}
+function drinkAntidote() {
+  if (!invCount('antidote')) return;
+  add('antidote', -1);
+  const was = player.poison;
+  player.poison = 0;
+  player.poisonNext = 0;
+  message(
+    was
+      ? 'You drink the marsh antidote and cure the poison.'
+      : 'You drink the antidote, but you were not poisoned.',
+    was ? 'good' : 'game',
+  );
+  renderPanel();
+  updateUI();
+  save();
+}
+const PRAYERS = {
+  strength: { name: 'Burst of Strength', level: 1, desc: '+2 melee damage.' },
+  sharp: { name: 'Sharp Eye', level: 2, desc: '+2 melee accuracy.' },
+  skin: { name: 'Thick Skin', level: 3, desc: '+2 melee defence.' },
+  clarity: { name: 'Clarity of Thought', level: 7, desc: '+4 melee accuracy.' },
+  steel: { name: 'Steel Skin', level: 10, desc: '+5 melee defence.' },
+  might: { name: 'Ultimate Strength', level: 12, desc: '+5 melee damage.' },
+  protect: { name: 'Protect from Melee', level: 15, desc: 'Halves incoming melee damage.' },
+};
+function togglePrayer(id) {
+  const prayers = PRAYERS;
+  const prayer = prayers[id];
+  if (level('Prayer') < prayer.level)
+    return message(`You need Prayer level ${prayer.level}.`, 'bad');
+  if (player.activePrayer === id) {
+    player.activePrayer = null;
+    message(`${prayer.name} deactivated.`);
+    renderPanel();
+    return;
+  }
+  if (player.prayerPoints <= 0)
+    return message('Recharge your Prayer points at the Castle altar.', 'bad');
+  player.activePrayer = id;
+  if (window.SFX) SFX.play('prayer');
+  message(`${prayer.name} activated.`, 'good');
+  renderPanel();
+}
+function buryBones() {
+  if (!invCount('bones')) return;
+  add('bones', -1);
+  player.xp.Prayer += 15;
+  tally('bury');
+  effects.push({
+    x: player.x,
+    y: player.y,
+    value: 'XP',
+    color: '#d9dfef',
+    at: performance.now(),
+    xp: 15,
+  });
+  message('You bury the bones and offer a quiet prayer.', 'good');
+  renderPanel();
+}
+function prayAtAltar() {
+  player.prayerPoints = maxPrayer();
+  message(`You recharge your Prayer points to ${player.prayerPoints}.`, 'good');
+  renderPanel();
+  updateUI();
+}
+function toggleRun() {
+  advanceTutorial(4);
+  if (player.runEnergy < 1 && !player.runEnabled)
+    return message('You need more run energy.', 'bad');
+  player.runEnabled = !player.runEnabled;
+  message(`Run mode ${player.runEnabled ? 'enabled' : 'disabled'}.`, 'game');
+  updateUI();
+}
+const MAP_TILE_COL = {
+  0: '#4f7c37',
+  1: '#a98c5c',
+  2: '#367d9e',
+  3: '#214a28',
+  4: '#65645d',
+  5: '#857158',
+  6: '#654426',
+  7: '#5f4a2c',
+  8: '#d55d25',
+  9: '#6f5f45',
+  10: '#496a46',
+  11: '#725238',
+  12: '#d7e2ee',
+  13: '#3a342e',
+  14: '#d5622a',
+};
+function drawWorldMap() {
+  const map = document.getElementById('worldMapCanvas'),
+    c = map.getContext('2d'),
+    sx = map.width / MAP_W,
+    sy = map.height / MAP_H,
+    icons = [],
+    dot = (x, y, color, r = 3.2, ring) => {
+      c.fillStyle = color;
+      c.beginPath();
+      c.arc(x * sx, y * sy, r, 0, 7);
+      c.fill();
+      if (ring) {
+        c.strokeStyle = ring;
+        c.lineWidth = 1.2;
+        c.stroke();
+      }
+    },
+    push = (x, y, label, wiki) => icons.push({ mx: x * sx, my: y * sy, label, wiki });
+  c.clearRect(0, 0, map.width, map.height);
+  for (let y = 0; y < MAP_H; y++)
+    for (let x = 0; x < MAP_W; x++) {
+      c.fillStyle = MAP_TILE_COL[tiles[y][x]] || '#4f7c37';
+      c.fillRect(x * sx, y * sy, Math.ceil(sx), Math.ceil(sy));
+    }
+  // sealed dungeon vault tint
+  c.fillStyle = '#0b0a1266';
+  c.fillRect(8 * sx, 74 * sy, 26 * sx, 24 * sy);
+  // resources
+  for (const p of FISH_SPOTS) {
+    dot(p.x, p.y, '#57c6df', 2.7);
+    push(p.x, p.y, p.name, null);
+  }
+  for (const r of ROCKS) {
+    dot(r.x, r.y, '#c8a06a', 2.7);
+    push(r.x, r.y, r.name, null);
+  }
+  for (const hnt of HUNT_SPOTS) {
+    dot(hnt.x, hnt.y, '#b58b57', 2.7);
+    push(hnt.x, hnt.y, 'Rabbit burrow', null);
+  }
+  for (const t of TREES) {
+    dot(t.x, t.y, '#4f9d3f', 2.5);
+    push(t.x, t.y, t.name, null);
+  }
+  for (const p of FARM_PATCHES) dot(p.x, p.y, '#8fbd4d', 2.4);
+  push(FARM_PATCHES[0].x, FARM_PATCHES[0].y, 'Greenrest farm', null);
+  for (const [o, label] of [
+    [FORGE, FORGE.name],
+    [ALTAR, ALTAR.name],
+    [WORKBENCH, WORKBENCH.name],
+    [CAULDRON, CAULDRON.name],
+  ]) {
+    dot(o.x, o.y, '#e0a24a', 3);
+    push(o.x, o.y, label, null);
+  }
+  // barrow portals
+  for (const p of PORTALS) {
+    dot(p.x, p.y, '#b56cff', 3.4, '#eadcff');
+    push(p.x, p.y, p.label, null);
+  }
+  // NPCs — clickable to the wiki
+  for (const n of NPCS) {
+    dot(n.x, n.y, '#67b9e8', 3.4, '#12324a');
+    push(n.x, n.y, `${n.name} — ${n.role}`, 'npc-' + n.id);
+  }
+  // monsters — clickable to the wiki
+  for (const m of monsters)
+    if (m.alive) {
+      dot(m.x, m.y, '#d95c52', 2.7);
+      push(m.x, m.y, m.type.name, 'monster-' + m.kind);
+    }
+  for (const marker of questMarkers()) {
+    const qn = NPCS.find((n) => n.id === marker.id);
+    if (qn) {
+      c.strokeStyle = marker.color;
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(qn.x * sx, qn.y * sy, 7, 0, 7);
+      c.stroke();
+    }
+  }
+  const objective = activeQuestTarget();
+  if (objective) {
+    const ox = objective.x * sx,
+      oy = objective.y * sy;
+    c.strokeStyle = '#ffe268';
+    c.fillStyle = '#ffe268';
+    c.lineWidth = 3;
+    c.beginPath();
+    c.arc(ox, oy, 9, 0, 7);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(ox, oy - 6);
+    c.lineTo(ox + 6, oy);
+    c.lineTo(ox, oy + 6);
+    c.lineTo(ox - 6, oy);
+    c.closePath();
+    c.fill();
+  }
+  c.font = 'bold 13px Georgia';
+  c.textAlign = 'center';
+  c.lineWidth = 3;
+  for (const [name, x, y] of [
+    ['GREENREST VALE', 96, 112],
+    ['PINEHOLT', 96, 54],
+    ['FROSTMERE', 128, 18],
+    ['THORNWOOD', 160, 58],
+    ['CINDERFORGE', 160, 134],
+    ['SABLEMARSH', 32, 116],
+    ['ASHFALL WASTES', 30, 40],
+    ['Ashen Barrow', 21, 72],
+  ]) {
+    c.strokeStyle = '#111';
+    c.strokeText(name, x * sx, y * sy);
+    c.fillStyle = name === 'Ashen Barrow' ? '#c9b7ef' : '#f1d795';
+    c.fillText(name, x * sx, y * sy);
+  }
+  if (player.grave) {
+    c.strokeStyle = '#eef4f1';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(player.grave.x * sx - 4, player.grave.y * sy - 4);
+    c.lineTo(player.grave.x * sx + 4, player.grave.y * sy + 4);
+    c.moveTo(player.grave.x * sx + 4, player.grave.y * sy - 4);
+    c.lineTo(player.grave.x * sx - 4, player.grave.y * sy + 4);
+    c.stroke();
+  }
+  c.fillStyle = '#ffe168';
+  c.beginPath();
+  c.arc(player.x * sx, player.y * sy, 5, 0, 7);
+  c.fill();
+  c.strokeStyle = '#3b2a0d';
+  c.lineWidth = 2;
+  c.stroke();
+  window.mapIcons = icons;
+}
+function mapIconAt(e) {
+  const map = document.getElementById('worldMapCanvas'),
+    r = map.getBoundingClientRect(),
+    cx = ((e.clientX - r.left) / r.width) * map.width,
+    cy = ((e.clientY - r.top) / r.height) * map.height;
+  let best = null,
+    bd = 81; // within ~9px
+  for (const ic of window.mapIcons || []) {
+    const d = (ic.mx - cx) ** 2 + (ic.my - cy) ** 2;
+    if (d < bd) {
+      bd = d;
+      best = ic;
+    }
+  }
+  return best;
+}
+function mapHover(e) {
+  const map = document.getElementById('worldMapCanvas'),
+    tip = document.getElementById('mapTooltip'),
+    ic = mapIconAt(e);
+  if (ic) {
+    tip.textContent = ic.label + (ic.wiki ? '  ·  click for wiki' : '');
+    tip.classList.remove('hidden');
+    const wrap = map.parentElement.getBoundingClientRect();
+    tip.style.left = e.clientX - wrap.left + 14 + 'px';
+    tip.style.top = e.clientY - wrap.top + 14 + 'px';
+    map.style.cursor = ic.wiki ? 'pointer' : 'crosshair';
+  } else {
+    tip.classList.add('hidden');
+    map.style.cursor = 'crosshair';
+  }
+}
+function openWorldMap() {
+  advanceTutorial(3);
+  closeContext();
+  closeModal();
+  drawWorldMap();
+  document.getElementById('worldMap').classList.remove('hidden');
+}
+function closeWorldMap() {
+  document.getElementById('worldMap').classList.add('hidden');
+}
+function mapDestination(e) {
+  const clicked = mapIconAt(e);
+  if (clicked && clicked.wiki) {
+    window.open('wiki.html#' + clicked.wiki, '_blank');
+    return;
+  }
+  const map = document.getElementById('worldMapCanvas'),
+    r = map.getBoundingClientRect(),
+    x = Math.max(0, Math.min(MAP_W - 1, Math.floor(((e.clientX - r.left) / r.width) * MAP_W))),
+    y = Math.max(0, Math.min(MAP_H - 1, Math.floor(((e.clientY - r.top) / r.height) * MAP_H))),
+    playerDungeon = inDungeon(player.x, player.y),
+    targetDungeon = inDungeon(x, y);
+  if (playerDungeon !== targetDungeon) {
+    message('Use the Ashen Barrow entrance to travel between the surface and dungeon.', 'bad');
+    closeWorldMap();
+    return;
+  }
+  let target = walkable(x, y) ? { x, y } : null;
+  for (let radius = 1; !target && radius <= 3; radius++)
+    for (let dy = -radius; dy <= radius && !target; dy++)
+      for (let dx = -radius; dx <= radius && !target; dx++)
+        if (Math.abs(dx) + Math.abs(dy) <= radius && walkable(x + dx, y + dy))
+          target = { x: x + dx, y: y + dy };
+  closeWorldMap();
+  if (!target) return message('There is no reachable tile near that location.', 'bad');
+  setPath(target.x, target.y);
+  message(`Travelling toward ${regionNameFor(target.x, target.y)}.`, 'game');
+}
+function inDungeon(x, y) {
+  return x >= 8 && x <= 33 && y >= 74 && y <= 97;
+}
+function regionNameFor(x, y) {
+  if (inDungeon(x, y)) return 'Ashen Barrow';
+  if (x < 64) return y < 100 ? 'Ashfall Wastes' : 'Sablemarsh';
+  if (y < 40) return 'Frostmere';
+  if (x < 128) return y < 100 ? 'Pineholt' : 'Greenrest Vale';
+  return y < 106 ? 'Thornwood' : 'Cinderforge';
+}
+setInterval(gameTick, TICK_MS);
+function npcTick() {
+  if (tickCount % 12 === 0) {
+    const speakers = NPCS.filter((n) => NPC_AMBIENT[n.id]);
+    if (speakers.length) {
+      const n = speakers[Math.floor(Math.random() * speakers.length)],
+        lines = NPC_AMBIENT[n.id];
+      n.speech = lines[Math.floor(Math.random() * lines.length)];
+      n.speechUntil = tickCount + 6;
+    }
+  }
+  if (tickCount % 3 !== 0) return;
+  for (const n of NPCS) {
+    if (
+      !n.wander ||
+      (skilling && skilling.type === 'pickpocket' && skilling.npc === n) ||
+      Math.random() > 0.58
+    )
+      continue;
+    const options = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]
+      .map(([dx, dy]) => ({ x: n.x + dx, y: n.y + dy }))
+      .filter(
+        (p) =>
+          canStep(n.x, n.y, p.x, p.y) &&
+          Math.abs(p.x - n.homeX) + Math.abs(p.y - n.homeY) <= n.wander &&
+          !NPCS.some((o) => o !== n && o.x === p.x && o.y === p.y) &&
+          !monsters.some((m) => m.alive && m.x === p.x && m.y === p.y) &&
+          !(player.x === p.x && player.y === p.y),
+      );
+    if (!options.length) continue;
+    options.sort(
+      (a, b) =>
+        Math.abs(a.x - n.homeX) +
+        Math.abs(a.y - n.homeY) -
+        (Math.abs(b.x - n.homeX) + Math.abs(b.y - n.homeY)),
+    );
+    const p =
+      Math.random() < 0.35 ? options[0] : options[Math.floor(Math.random() * options.length)];
+    n.fromX = n.drawX;
+    n.fromY = n.drawY;
+    n.x = p.x;
+    n.y = p.y;
+    n.moveAt = performance.now();
+  }
+}
+function moveMonster(m, pos) {
+  m.fromX = m.drawX;
+  m.fromY = m.drawY;
+  m.x = pos.x;
+  m.y = pos.y;
+  m.moveAt = performance.now();
+}
+function monsterStepClear(m, p) {
+  return (
+    p &&
+    (p.x !== player.x || p.y !== player.y) &&
+    !NPCS.some((n) => n.x === p.x && n.y === p.y) &&
+    !monsters.some((o) => o !== m && o.alive && o.x === p.x && o.y === p.y)
+  );
+}
+function spawnDrop(x, y, item, q) {
+  const existing = drops.find((d) => d.x === x && d.y === y && d.item === item);
+  if (existing) {
+    existing.q += q;
+    existing.despawn = tickCount + 100;
+  } else drops.push({ x, y, item, q, despawn: tickCount + 100 });
+}
+function monsterTick() {
+  for (const m of monsters) {
+    if (!m.alive || m === combat) continue;
+    const aggressive = [
+        'goblin',
+        'bogling',
+        'wolf',
+        'boar',
+        'bandit',
+        'guardian',
+        'skeleton',
+        'bat',
+        'spider',
+        'warden',
+        'direWolf',
+        'goblinWarlord',
+        'cinderFiend',
+        'frostTroll',
+        'cinderColossus',
+      ].includes(m.kind),
+      range = m.kind === 'warden' || m.type.boss ? 6 : 4,
+      dist = tileDistance(m, player);
+    if (!aggressive || dist > range) {
+      if ((m.x !== m.spawnX || m.y !== m.spawnY) && tickCount % 4 === 0) {
+        const home = findPath(m.x, m.y, m.spawnX, m.spawnY),
+          next = home[0];
+        if (monsterStepClear(m, next)) moveMonster(m, next);
+      }
+      continue;
+    }
+    if (dist <= 1) {
+      if (!combat) {
+        combat = m;
+        pending = null;
+        skilling = null;
+        m.lastAttack = Math.min(m.lastAttack, tickCount - 3);
+        message('The ' + m.type.name + ' attacks you!', 'bad');
+      }
+      continue;
+    }
+    if (tickCount % 2 === 0) {
+      const p = findPath(m.x, m.y, player.x, player.y),
+        next = p[0];
+      if (monsterStepClear(m, next)) moveMonster(m, next);
+    }
+  }
+}
+const SPELLS = {
+  emberStrike: { name: 'Ember Strike', level: 1, runes: 1, dmgBonus: 0, acc: 0 },
+  emberBlast: { name: 'Ember Blast', level: 15, runes: 3, dmgBonus: 4, acc: 0.05 },
+  frostBind: { name: 'Frostbind', level: 20, runes: 4, dmgBonus: 2, acc: 0.05, bind: 3 },
+};
+let lastCombatTarget = null;
+function combatTick() {
+  const m = combat;
+  if (!m.alive) {
+    combat = null;
+    return;
+  }
+  if (m !== lastCombatTarget) {
+    lastCombatTarget = m;
+    player.nextAttackTick = tickCount; // attack immediately when engaging a new target
+  }
+  const weapon = ITEMS[player.equipment.weapon] || { attack: 0 },
+    isRanged = !!weapon.ranged,
+    isMagic = !!weapon.magic,
+    range = weapon.range || 1,
+    dist = tileDistance(player, m);
+  if (dist > range) {
+    moveWithinRange(m, range, () => {
+      combat = m;
+    });
+    return;
+  }
+  const speed = weapon.speed || 4;
+  if (tickCount >= (player.nextAttackTick || 0)) {
+    if (isRanged && !invCount('arrows')) {
+      message('You have run out of arrows.', 'bad');
+      combat = null;
+      return;
+    }
+    if (isMagic) {
+      const need = (SPELLS[player.selectedSpell] || SPELLS.emberStrike).runes || 1;
+      if (invCount('emberRune') < need) {
+        message(`You need ${need} Ember rune${need === 1 ? '' : 's'} to cast this spell.`, 'bad');
+        combat = null;
+        return;
+      }
+    }
+    let hit, xpSkill, maxHit, projectileKind, usingSpec = false;
+    if (isMagic) {
+      const spell = SPELLS[player.selectedSpell] || SPELLS.emberStrike;
+      add('emberRune', -(spell.runes || 1));
+      const skill = level('Magic'),
+        accurate =
+          Math.random() <
+          Math.min(0.96, 0.51 + skill * 0.04 + (weapon.magic || 0) * 0.04 + (spell.acc || 0));
+      maxHit = 2 + Math.floor(skill / 3) + (weapon.magic || 0) + (spell.dmgBonus || 0);
+      hit = accurate ? Math.floor(Math.random() * (maxHit + 1)) : 0;
+      if (spell.bind) {
+        m.bindUntil = tickCount + spell.bind;
+        message(`${m.type.name} is bound in place!`, 'good');
+      }
+      xpSkill = 'Magic';
+      projectileKind = 'magic';
+    } else if (isRanged) {
+      add('arrows', -1);
+      const skill = level('Ranged'),
+        accurate = Math.random() < Math.min(0.94, 0.5 + skill * 0.04 + (weapon.ranged || 0) * 0.04);
+      maxHit = 1 + Math.floor(skill / 3) + (weapon.ranged || 0);
+      hit = accurate ? Math.floor(Math.random() * (maxHit + 1)) : 0;
+      xpSkill = 'Ranged';
+      projectileKind = 'arrow';
+    } else {
+      const style = player.combatStyle,
+        pray = player.activePrayer,
+        att =
+          level('Attack') +
+          (style === 'accurate' ? 3 : 0) +
+          (pray === 'clarity' ? 4 : pray === 'sharp' ? 2 : 0),
+        str =
+          level('Strength') +
+          (style === 'aggressive' ? 3 : 0) +
+          (pray === 'strength' ? 2 : pray === 'might' ? 5 : 0);
+      let accChance = Math.min(0.95, 0.54 + att * 0.035 + (weapon.attack || 0) * 0.035);
+      maxHit = 1 + Math.floor(str / 3) + (weapon.attack || 0);
+      // Special attack
+      if (player.specArmed && weapon.spec && player.specEnergy >= 50) {
+        usingSpec = true;
+        player.specArmed = false;
+        player.specEnergy -= 50;
+        if (window.SFX) SFX.play('cast');
+        message(
+          weapon.spec === 'power' ? 'Special attack — crushing blow!' : 'Special attack — flurry!',
+          'good',
+        );
+        if (weapon.spec === 'power') {
+          accChance = 1;
+          maxHit = Math.ceil(maxHit * 1.6);
+        }
+      }
+      const accurate = Math.random() < accChance;
+      hit = accurate ? Math.floor(Math.random() * (maxHit + 1)) : 0;
+      if (usingSpec && weapon.spec === 'double')
+        hit += Math.random() < accChance ? Math.floor(Math.random() * (maxHit + 1)) : 0;
+      xpSkill = style === 'aggressive' ? 'Strength' : style === 'defensive' ? 'Defence' : 'Attack';
+    }
+    if (projectileKind)
+      projectiles.push({
+        sx: player.drawX,
+        sy: player.drawY,
+        tx: m.drawX,
+        ty: m.drawY,
+        at: performance.now(),
+        duration: isMagic ? 430 : 320,
+        kind: projectileKind,
+      });
+    if (window.SFX && isMagic) SFX.play('cast');
+    if (isMagic) tally('cast');
+    if (window.SFX) SFX.play(hit > 0 ? 'hit' : 'miss');
+    m.hp -= hit;
+    if (m.kind === 'warden' && m.hp > 0 && m.hp <= m.maxHp / 2 && !m.enraged) {
+      m.enraged = true;
+      message('The Ashen Warden tears open its ember seal and becomes enraged!', 'bad');
+      effects.push({
+        x: m.x,
+        y: m.y,
+        value: 'ENRAGED',
+        color: '#ff8a35',
+        at: performance.now(),
+        xp: 0,
+      });
+    }
+    effects.push({
+      x: m.x,
+      y: m.y,
+      value: hit,
+      color: hit ? (isMagic ? '#b96cff' : '#ef5049') : '#65a9d9',
+      at: performance.now(),
+      xp: 4 + hit * 4,
+    });
+    message(
+      hit ? `You hit the ${m.type.name} for ${hit}.` : `You miss the ${m.type.name}.`,
+      hit ? 'good' : '',
+    );
+    player.xp[xpSkill] += 4 + hit * 4;
+    player.xp.Hitpoints += hit;
+    player.nextAttackTick = tickCount + speed;
+    lastActionAt = performance.now();
+    actionDuration = TICK_MS * speed;
+    if (m.hp <= 0) {
+      killMonster(m);
+      renderPanel();
+      return;
+    }
+    renderPanel();
+  }
+  if (!adjacent(player, m)) {
+    if (tickCount % 2 === 0) {
+      const p = findPath(m.x, m.y, player.x, player.y);
+      if (monsterStepClear(m, p[0])) moveMonster(m, p[0]);
+    }
+    return;
+  }
+  if (tickCount >= (m.bindUntil || 0) && tickCount - m.lastAttack >= (m.type.attackSpeed || 4)) {
+    m.lastAttack = tickCount;
+    m.attackAt = performance.now();
+    const armor = ITEMS[player.equipment.armor] || { defence: 0 },
+      shield = ITEMS[player.equipment.shield] || { defence: 0 },
+      gloves = ITEMS[player.equipment.gloves] || { defence: 0 },
+      pray = player.activePrayer,
+      def =
+        level('Defence') +
+        (player.combatStyle === 'defensive' ? 3 : 0) +
+        (pray === 'skin' ? 2 : pray === 'steel' ? 5 : 0) +
+        (armor.defence || 0) +
+        (shield.defence || 0) +
+        (gloves.defence || 0);
+    let hit =
+      Math.random() < Math.max(0.18, 0.68 - def * 0.025)
+        ? Math.floor(Math.random() * (m.type.maxHit + 1))
+        : 0;
+    if (pray === 'protect') hit = Math.floor(hit / 2);
+    if (!admin) player.hp = Math.max(0, player.hp - hit);
+    if (hit > 0) {
+      if (window.SFX) SFX.play('hurt');
+      window.hurtFlash = performance.now(); // EF1: red screen flash for combat feel
+    }
+    effects.push({
+      x: player.drawX,
+      y: player.drawY,
+      value: hit,
+      color: hit ? '#ef5049' : '#65a9d9',
+      at: performance.now(),
+    });
+    if (hit) message(`The ${m.type.name} hits you for ${hit}.`, 'bad');
+    if (m.kind === 'bogling' && hit && Math.random() < 0.32) {
+      player.poison = Math.max(player.poison, 5);
+      player.poisonNext = tickCount + 6;
+      message('Bogling venom poisons you!', 'bad');
+      updateUI();
+    }
+    if (player.hp <= 0) death();
+  }
+}
+function wardenMechanicTick() {
+  if (!combat || combat.kind !== 'warden' || !combat.alive) return;
+  if (combat.enraged ? tickCount % 4 !== 0 : tickCount % 8 !== 4) return;
+  const tileset = [
+    [player.x, player.y],
+    [player.x + 1, player.y],
+    [player.x - 1, player.y],
+    [player.x, player.y + 1],
+    [player.x, player.y - 1],
+  ].filter(([x, y]) => walkable(x, y));
+  hazards.push({
+    tiles: tileset,
+    resolve: tickCount + (combat.enraged ? 1 : 2),
+    enraged: combat.enraged,
+  });
+  message(
+    combat.enraged
+      ? 'The enraged Warden floods the floor with cinders! Move now!'
+      : 'The Ashen Warden marks the ground beneath you! Move!',
+    'bad',
+  );
+}
+function hazardTick() {
+  wardenMechanicTick();
+  const remaining = [];
+  for (const h of hazards) {
+    if (tickCount < h.resolve) {
+      remaining.push(h);
+      continue;
+    }
+    if (h.tiles.some(([x, y]) => x === player.x && y === player.y)) {
+      const damage = h.enraged ? 4 : 3;
+      if (!admin) player.hp = Math.max(0, player.hp - damage);
+      effects.push({
+        x: player.drawX,
+        y: player.drawY,
+        value: damage,
+        color: '#ff7a35',
+        at: performance.now(),
+      });
+      message(`The burning sigil hits you for ${damage}.`, 'bad');
+      if (player.hp <= 0) death();
+    } else message('You evade the Warden burning sigil.', 'good');
+  }
+  hazards = remaining;
+}
+function killMonster(m) {
+  m.alive = false;
+  m.respawn = tickCount + (m.kind === 'warden' ? 50 : 20);
+  combat = null;
+  player.xp[
+    (ITEMS[player.equipment.weapon] || {}).magic
+      ? 'Magic'
+      : (ITEMS[player.equipment.weapon] || {}).ranged
+        ? 'Ranged'
+        : player.combatStyle === 'aggressive'
+          ? 'Strength'
+          : player.combatStyle === 'defensive'
+            ? 'Defence'
+            : 'Attack'
+  ] += m.type.xp;
+  player.kills++;
+  tally('kill');
+  player.killLog[m.kind] = (player.killLog[m.kind] || 0) + 1;
+  if (player.barrowRunStartedAt && inDungeon(player.x, player.y)) {
+    const gain = { skeleton: 15, bat: 10, spider: 12 }[m.kind] || 0;
+    if (gain) {
+      player.barrowPotential = Math.min(100, player.barrowPotential + gain);
+      message(`Barrow reward potential: ${player.barrowPotential}%.`, 'game');
+    }
+  }
+  const bq = player.sideQuests.boarHunt,
+    sq = player.sideQuests.silkAndCinders,
+    rq = player.sideQuests.brokenRoad,
+    hq = player.sideQuests.hearthAndHome,
+    mq = player.sideQuests.cureMirehaven;
+  if (m.kind === 'bandit' && rq.step === 1 && rq.kills < 4) {
+    rq.kills++;
+    message('The Broken Road: ' + rq.kills + '/4 road bandits defeated.', 'game');
+    if (rq.kills === 4) message('Return to Mara in Embercross for your reward.', 'good');
+  }
+  if (m.kind === 'spider' && sq.step === 1 && sq.kills < 4) {
+    sq.kills++;
+    message('Silk and Cinders: ' + sq.kills + '/4 cave spiders defeated.', 'game');
+    if (sq.kills === 4) message('Return to Scout Vale for your reward.', 'good');
+  }
+  if (m.kind === 'boar' && bq.step === 1 && bq.kills < 3) {
+    bq.kills++;
+    message('The Boar Hunt: ' + bq.kills + '/3 wild boars defeated.', 'game');
+    if (bq.kills === 3) message('Return to Elder Willow for your reward.', 'good');
+  }
+  if (player.contract && player.contract.kind === m.kind && player.contract.remaining > 0) {
+    player.contract.remaining--;
+    message(
+      `Contract: ${player.contract.remaining} ${player.contract.name}${player.contract.remaining === 1 ? '' : 's'} remaining.`,
+      'game',
+    );
+    if (player.contract.remaining === 0)
+      message('Contract complete! Return to Guard Bren.', 'good');
+  }
+  for (const [id, min, max, chance = 1] of m.type.drops) {
+    if (Math.random() > chance) continue;
+    const q = min + Math.floor(Math.random() * (max - min + 1));
+    spawnDrop(m.x, m.y, id, q);
+  }
+  message(`You defeat the ${m.type.name}. Loot appears on the ground.`, 'good');
+  const s = player.story;
+  if (s.q === 0 && s.step === 4 && m.kind === 'goblin') {
+    s.step = 5;
+    questUpdate();
+  }
+  if (s.q === 2 && s.step === 1 && m.kind === 'guardian') {
+    add('key', 1, true);
+    s.step = 2;
+    message('The skeleton carried the Barrow key.', 'good');
+    questUpdate();
+  }
+  if (m.kind === 'warden') {
+    if (s.q === 2 && s.step === 3) {
+      add('relic', 1, true);
+      s.step = 4;
+      questUpdate();
+    }
+    message('The Warden chest has been unsealed.', 'good');
+  }
+}
+function respawnTick() {
+  for (const m of monsters)
+    if (!m.alive && tickCount >= m.respawn) {
+      m.alive = true;
+      m.hp = m.maxHp;
+      m.x = m.spawnX;
+      m.y = m.spawnY;
+      m.drawX = m.spawnX;
+      m.drawY = m.spawnY;
+      m.fromX = m.spawnX;
+      m.fromY = m.spawnY;
+      m.enraged = false;
+      if (m.kind === 'warden' && inDungeon(player.x, player.y) && !barrowChestReady()) {
+        player.barrowRunStartedAt = Date.now();
+        player.barrowPotential = 0;
+        message('The Ashen Warden reforms. A new run has begun.', 'game');
+      }
+    }
+}
+function death() {
+  if (admin) {
+    // Admin mode: cannot die.
+    player.hp = player.maxHp;
+    player.poison = 0;
+    return;
+  }
+  if (window.SFX) SFX.play('die');
+  const gx = player.x,
+    gy = player.y;
+  if (player.grave) bankGrave(false);
+  const ranked = Object.keys(player.inv)
+      .filter((id) => !['key', 'relic'].includes(id))
+      .sort(
+        (a, b) =>
+          (ITEMS[b].value || 0) * (player.inv[b] || 1) -
+          (ITEMS[a].value || 0) * (player.inv[a] || 1),
+      ),
+    kept = new Set([...ranked.slice(0, 3), 'key', 'relic']),
+    lost = {};
+  for (const [id, q] of Object.entries(player.inv))
+    if (!kept.has(id)) {
+      lost[id] = q;
+      delete player.inv[id];
+    }
+  const gold = Math.floor(player.gold * 0.1);
+  player.gold -= gold;
+  if (Object.keys(lost).length || gold)
+    player.grave = { x: gx, y: gy, items: lost, gold, expiresAt: Date.now() + 600000 };
+  player.hp = player.maxHp;
+  player.prayerPoints = 0;
+  player.activePrayer = null;
+  player.poison = 0;
+  player.poisonNext = 0;
+  player.x = 96;
+  player.y = 128;
+  player.drawX = 96;
+  player.drawY = 128;
+  path = [];
+  moveSegment = null;
+  combat = null;
+  skilling = null;
+  if (player.barrowRunStartedAt) {
+    player.barrowRunStartedAt = 0;
+    player.barrowPotential = 0;
+    message('Ashen Barrow run ended on death.', 'bad');
+  }
+  message(
+    player.grave
+      ? 'You wake at the Greenrest Vale plaza. A gravestone holds your lost items for 10 minutes.'
+      : 'You collapse and wake at the Greenrest Vale plaza.',
+    'bad',
+  );
+  renderPanel();
+  updateUI();
+}
+function recoverGrave() {
+  const g = player.grave;
+  if (!g) return;
+  let recovered = 0;
+  for (const [id, q] of Object.entries(g.items)) {
+    if (!canAdd(id)) continue;
+    add(id, q);
+    delete g.items[id];
+    recovered++;
+  }
+  if (g.gold) {
+    player.gold += g.gold;
+    g.gold = 0;
+    recovered++;
+  }
+  if (!Object.keys(g.items).length && !g.gold) {
+    player.grave = null;
+    message('You recover everything from your gravestone.', 'good');
+  } else message('Your backpack is too full to recover everything.', 'bad');
+  if (recovered) {
+    renderPanel();
+    updateUI();
+  }
+}
+function bankGrave(notify = true) {
+  const g = player.grave;
+  if (!g) return;
+  for (const [id, q] of Object.entries(g.items)) player.bank[id] = (player.bank[id] || 0) + q;
+  player.gold += g.gold || 0;
+  player.grave = null;
+  if (notify) message('The Castle Bank recovered your expired gravestone items.', 'game');
+  renderPanel();
+  updateUI();
+}
+function minimapBounds() {
+  const size = 126;
+  return { x: canvas.clientWidth - size - 14, y: 14, size };
+}
+function isMinimapPoint(x, y) {
+  const b = minimapBounds();
+  return x >= b.x - 4 && x <= b.x + b.size + 4 && y >= b.y - 4 && y <= b.y + b.size + 4;
+}
+function minimapTravel(sx, sy) {
+  closeContext();
+  closeItemMenu();
+  const b = minimapBounds(),
+    x = Math.max(0, Math.min(MAP_W - 1, Math.floor(((sx - b.x) / b.size) * MAP_W))),
+    y = Math.max(0, Math.min(MAP_H - 1, Math.floor(((sy - b.y) / b.size) * MAP_H))),
+    playerDungeon = inDungeon(player.x, player.y),
+    targetDungeon = inDungeon(x, y);
+  if (playerDungeon !== targetDungeon)
+    return message('Use the Ashen Barrow entrance to cross between surface and dungeon.', 'bad');
+  let target = walkable(x, y) ? { x, y } : null;
+  for (let radius = 1; !target && radius <= 4; radius++)
+    for (let dy = -radius; dy <= radius && !target; dy++)
+      for (let dx = -radius; dx <= radius && !target; dx++)
+        if (Math.abs(dx) + Math.abs(dy) <= radius && walkable(x + dx, y + dy))
+          target = { x: x + dx, y: y + dy };
+  if (!target) return message('There is no reachable tile near that minimap location.', 'bad');
+  setPath(target.x, target.y);
+  message(`Minimap travel: ${regionNameFor(target.x, target.y)}.`, 'game');
+}
+function targetAt(x, y) {
+  return (
+    (player.grave && player.grave.x === x && player.grave.y === y
+      ? { ...player.grave, kind: 'grave' }
+      : null) ||
+    NPCS.find((n) => n.x === x && n.y === y) ||
+    monsters.find((m) => m.alive && m.x === x && m.y === y) ||
+    drops.find((d) => d.x === x && d.y === y) ||
+    ROCKS.find((r) => r.x === x && r.y === y && !r.depletedUntil) ||
+    TREES.find((t) => t.x === x && t.y === y && !t.depletedUntil) ||
+    fires.find((f) => f.x === x && f.y === y) ||
+    FARM_PATCHES.find((p) => p.x === x && p.y === y) ||
+    HUNT_SPOTS.find((p) => p.x === x && p.y === y) ||
+    SIGNPOSTS.find((p) => p.x === x && p.y === y) ||
+    (x === FORGE.x && y === FORGE.y ? { ...FORGE, kind: 'forge' } : null) ||
+    (x === ALTAR.x && y === ALTAR.y ? { ...ALTAR, kind: 'altar' } : null) ||
+    (x === WORKBENCH.x && y === WORKBENCH.y ? { ...WORKBENCH, kind: 'craftbench' } : null) ||
+    (x === CAULDRON.x && y === CAULDRON.y ? { ...CAULDRON, kind: 'cauldron' } : null) ||
+    (x === DUNGEON_LEVER.x && y === DUNGEON_LEVER.y ? DUNGEON_LEVER : null) ||
+    (!player.barrowGateOpen && x === DUNGEON_GATE.x && y === DUNGEON_GATE.y
+      ? DUNGEON_GATE
+      : null) ||
+    (x === DUNGEON_CHEST.x && y === DUNGEON_CHEST.y ? { ...DUNGEON_CHEST, kind: 'chest' } : null) ||
+    BARROW_TABLETS.find((t) => t.x === x && t.y === y) ||
+    PORTALS.find((p) => p.x === x && p.y === y) ||
+    FISH_SPOTS.find((p) => p.x === x && p.y === y) ||
+    (tiles[y]?.[x] === 8 ? { kind: 'fire', x, y } : null)
+  );
+}
+canvas.addEventListener('mousemove', (e) => {
+  const r = canvas.getBoundingClientRect(),
+    mx = e.clientX - r.left,
+    my = e.clientY - r.top,
+    tip = document.getElementById('tooltip');
+  if (isMinimapPoint(mx, my)) {
+    tip.style.display = 'block';
+    tip.style.left = mx - 115 + 'px';
+    tip.style.top = my + 12 + 'px';
+    tip.textContent = 'Click minimap to travel';
+    return;
+  }
+  const p = toWorld(mx, my);
+  hover = {
+    x: Math.max(0, Math.min(MAP_W - 1, Math.floor(p.x))),
+    y: Math.max(0, Math.min(MAP_H - 1, Math.floor(p.y))),
+  };
+  const t = targetAt(hover.x, hover.y);
+  if (t) {
+    tip.style.display = 'block';
+    tip.style.left = e.clientX - r.left + 12 + 'px';
+    tip.style.top = e.clientY - r.top + 12 + 'px';
+    tip.textContent = t.ore
+      ? `Mine ${t.name}`
+      : HUNT_SPOTS.includes(t)
+        ? `Lay trap at ${t.name}`
+        : SIGNPOSTS.includes(t)
+          ? `Read ${t.name}`
+          : FARM_PATCHES.includes(t)
+            ? `${patchAction(t)} ${t.name}`
+            : TREES.includes(t)
+              ? `Chop ${t.name}`
+              : t.kind === 'forge'
+                ? 'Use frontier anvil'
+                : t.kind === 'altar'
+                  ? 'Pray at Castle altar'
+                  : t.kind === 'dungeonLever'
+                    ? player.barrowGateOpen
+                      ? 'Inspect ancient lever'
+                      : 'Pull ancient lever'
+                    : t.kind === 'dungeonGate'
+                      ? 'Open portcullis'
+                      : t.kind === 'grave'
+                        ? 'Recover gravestone'
+                        : t.kind === 'craftbench'
+                          ? 'Craft at workbench'
+                          : t.kind === 'cauldron'
+                            ? 'Brew at cauldron'
+                            : t.kind === 'fire'
+                              ? 'Cook'
+                              : t.name
+                                ? `Talk-to ${t.name}`
+                                : t.type
+                                  ? `Attack ${t.type.name}`
+                                  : t.item
+                                    ? `Take ${ITEMS[t.item].name}`
+                                    : t.label
+                                      ? t.label
+                                      : t.kind === 'fish'
+                                        ? 'Fish'
+                                        : '';
+  } else tip.style.display = 'none';
+});
+function activateTarget(t, x = hover.x, y = hover.y) {
+  closeContext();
+  if (!t) return setPath(x, y);
+  if (t.ore) return moveAdjacent(t, () => startMining(t));
+  if (TREES.includes(t)) return moveAdjacent(t, () => startChop(t));
+  if (HUNT_SPOTS.includes(t)) return moveAdjacent(t, () => startHunt(t));
+  if (SIGNPOSTS.includes(t)) return moveAdjacent(t, () => readSign(t));
+  if (BARROW_TABLETS.includes(t)) return moveAdjacent(t, () => readBarrowTablet(t));
+  if (FARM_PATCHES.includes(t)) return moveAdjacent(t, () => interactPatch(t));
+  if (t.kind === 'grave') return moveAdjacent(t, recoverGrave);
+  if (t.kind === 'craftbench') return moveAdjacent(t, openCrafting);
+  if (t.kind === 'cauldron') return moveAdjacent(t, openHerblore);
+  if (t.kind === 'forge') return moveAdjacent(t, openForge);
+  if (t.kind === 'altar') return moveAdjacent(t, prayAtAltar);
+  if (t.kind === 'dungeonLever') return moveAdjacent(t, pullDungeonLever);
+  if (t.kind === 'dungeonGate')
+    return moveAdjacent(t, () =>
+      message('The portcullis is sealed. A mechanism nearby may open it.', 'bad'),
+    );
+  if (t.kind === 'chest') return moveAdjacent(t, openDungeonChest);
+  if (t.type) return engageMonster(t);
+  if (t.role) return moveAdjacent(t, () => talk(t));
+  if (t.item) return moveAdjacent(t, () => loot(t));
+  if (t.toX !== undefined) return moveAdjacent(t, () => usePortal(t));
+  if (FISH_SPOTS.includes(t)) return moveAdjacent(t, () => fish(t));
+  if (t.kind === 'fire') return moveAdjacent(t, () => cook(t));
+}
+function targetTitle(t) {
+  if (!t) return 'Ground';
+  if (t.ore) return t.name;
+  if (t.type) return t.type.name;
+  if (t.item) return ITEMS[t.item].name;
+  if (t.label) return t.label;
+  if (HUNT_SPOTS.includes(t)) return t.name;
+  if (SIGNPOSTS.includes(t)) return t.name;
+  if (FARM_PATCHES.includes(t)) return t.name;
+  if (t.kind === 'grave') return 'Your gravestone';
+  if (t.kind === 'dungeonLever') return DUNGEON_LEVER.name;
+  if (t.kind === 'dungeonGate') return DUNGEON_GATE.name;
+  if (t.kind === 'craftbench') return WORKBENCH.name;
+  if (t.kind === 'cauldron') return CAULDRON.name;
+  if (t.kind === 'forge') return FORGE.name;
+  if (t.kind === 'altar') return ALTAR.name;
+  if (FISH_SPOTS.includes(t)) return t.name;
+  if (t.kind === 'fire') return 'Cooking fire';
+  return t.name || 'Object';
+}
+function primaryLabel(t) {
+  if (!t) return 'Walk here';
+  if (t.ore) return 'Mine';
+  if (TREES.includes(t)) return 'Chop';
+  if (HUNT_SPOTS.includes(t)) return 'Lay-trap';
+  if (SIGNPOSTS.includes(t) || BARROW_TABLETS.includes(t)) return 'Read';
+  if (FARM_PATCHES.includes(t)) return patchAction(t);
+  if (t.kind === 'dungeonLever') return player.barrowGateOpen ? 'Inspect' : 'Pull';
+  if (t.kind === 'dungeonGate') return 'Open';
+  if (t.kind === 'grave') return 'Recover';
+  if (t.kind === 'craftbench') return 'Craft-at';
+  if (t.kind === 'cauldron') return 'Brew-at';
+  if (t.kind === 'chest') return 'Open';
+  if (t.type) return 'Attack';
+  if (t.item) return 'Take';
+  if (t.role) return 'Talk-to';
+  if (t.toX !== undefined) return t.label;
+  if (t.kind === 'forge') return 'Use';
+  if (t.kind === 'altar') return 'Pray-at';
+  if (FISH_SPOTS.includes(t)) return 'Fish';
+  if (t.kind === 'fire') return 'Cook';
+  return 'Use';
+}
+function examineTarget(t) {
+  let text;
+  if (!t) text = 'A walkable tile in the world of Emberfall.';
+  else if (t.ore) text = `A ${t.name.toLowerCase()}. It requires Mining level ${t.level}.`;
+  else if (HUNT_SPOTS.includes(t))
+    text = 'A rabbit burrow. Lay a wooden snare nearby to train Hunter.';
+  else if (SIGNPOSTS.includes(t) || BARROW_TABLETS.includes(t)) text = t.text;
+  else if (FARM_PATCHES.includes(t)) {
+    const state = player.farm[t.id];
+    text = !state
+      ? 'An empty patch ready for cabbage seed.'
+      : Date.now() >= state.readyAt
+        ? 'Healthy cabbages are ready to harvest.'
+        : `Cabbages are growing. About ${Math.ceil((state.readyAt - Date.now()) / 1000)} seconds remain.`;
+  } else if (TREES.includes(t))
+    text = `A healthy ${t.name.toLowerCase()}. It requires Woodcutting level ${t.level}.`;
+  else if (t.type)
+    text = `${t.type.name}: ${t.maxHp} hitpoints and a maximum hit of ${t.type.maxHit}.`;
+  else if (t.item) text = `${ITEMS[t.item].name}, quantity ${t.q}.`;
+  else if (t.role)
+    text = `${t.name}, ${t.role}.${t.pickpocket ? ' They look distracted enough to pickpocket.' : ''}`;
+  else if (t.toX !== undefined) text = t.label + '.';
+  else if (t.kind === 'dungeonLever')
+    text = player.barrowGateOpen
+      ? 'The lever is locked in its lowered position.'
+      : 'A rusted mechanism connected to the eastern portcullis.';
+  else if (t.kind === 'dungeonGate') text = 'A heavy iron portcullis blocks the Warden chamber.';
+  else if (t.kind === 'craftbench')
+    text = 'A sturdy bench with needles, awls, and a small weaving frame.';
+  else if (t.kind === 'cauldron')
+    text = 'A bubbling cauldron used to brew herbs into useful potions.';
+  else if (t.kind === 'grave')
+    text = `Your gravestone holds ${Object.values(t.items).reduce((a, b) => a + b, 0)} item${Object.values(t.items).reduce((a, b) => a + b, 0) === 1 ? '' : 's'} and ${t.gold || 0} coins.`;
+  else if (t.kind === 'forge') text = 'Torren uses this anvil to turn ore into useful equipment.';
+  else if (t.kind === 'altar') text = 'A peaceful altar where Prayer points can be restored.';
+  else if (t.kind === 'chest')
+    text = barrowChestReady()
+      ? 'The Warden chest glows with newly awakened treasure.'
+      : `A dormant reward chest. Completed Barrow runs: ${player.barrowRuns}.`;
+  else if (FISH_SPOTS.includes(t))
+    text = `${t.catchName[0].toUpperCase() + t.catchName.slice(1)} ripple beneath the surface. Requires Fishing level ${t.level}.`;
+  else if (t.kind === 'fire') text = 'A hot fire suitable for cooking.';
+  else text = 'You see nothing unusual.';
+  message(text, 'game');
+  closeContext();
+}
+function closeContext() {
+  document.getElementById('contextMenu').classList.add('hidden');
+}
+function openContext(e, t, x, y) {
+  e.preventDefault();
+  closeItemMenu();
+  advanceTutorial(1);
+  const menu = document.getElementById('contextMenu'),
+    r = canvas.getBoundingClientRect(),
+    pile = t && t.item ? drops.filter((d) => d.x === x && d.y === y) : [],
+    hasExtra = pile.length > 1 || (t && t.pickpocket),
+    px = Math.min(e.clientX - r.left, canvas.clientWidth - 210),
+    py = Math.min(e.clientY - r.top, canvas.clientHeight - (hasExtra ? 215 : 175)),
+    primary = primaryLabel(t),
+    title = targetTitle(t),
+    takeAll =
+      pile.length > 1 ? `<button data-a="all">Take all (${pile.length} stacks)</button>` : '',
+    pick = t && t.pickpocket ? `<button data-a="pick">Pickpocket ${title}</button>` : '';
+  menu.style.left = Math.max(4, px) + 'px';
+  menu.style.top = Math.max(4, py) + 'px';
+  menu.innerHTML = `<div class="menuTitle">Choose option: ${title}</div><button data-a="primary" class="${t && t.type ? 'danger' : ''}">${primary} ${title}</button>${pick}${takeAll}<button data-a="walk">Walk here</button><button data-a="examine">Examine ${title}</button><button data-a="cancel" class="cancel">Cancel</button>`;
+  menu.classList.remove('hidden');
+  menu.querySelector('[data-a="primary"]').onclick = (ev) => {
+    ev.stopPropagation();
+    activateTarget(t, x, y);
+  };
+  const pickButton = menu.querySelector('[data-a="pick"]');
+  if (pickButton)
+    pickButton.onclick = (ev) => {
+      ev.stopPropagation();
+      closeContext();
+      moveAdjacent(t, () => startPickpocket(t));
+    };
+  const all = menu.querySelector('[data-a="all"]');
+  if (all)
+    all.onclick = (ev) => {
+      ev.stopPropagation();
+      closeContext();
+      moveAdjacent({ x, y }, () => lootPile(x, y));
+    };
+  menu.querySelector('[data-a="walk"]').onclick = (ev) => {
+    ev.stopPropagation();
+    closeContext();
+    setPath(x, y);
+  };
+  menu.querySelector('[data-a="examine"]').onclick = (ev) => {
+    ev.stopPropagation();
+    examineTarget(t);
+  };
+  menu.querySelector('[data-a="cancel"]').onclick = (ev) => {
+    ev.stopPropagation();
+    closeContext();
+  };
+}
+canvas.addEventListener('click', (e) => {
+  closeItemMenu();
+  const r = canvas.getBoundingClientRect(),
+    x = e.clientX - r.left,
+    y = e.clientY - r.top;
+  if (isMinimapPoint(x, y)) return minimapTravel(x, y);
+  activateTarget(targetAt(hover.x, hover.y), hover.x, hover.y);
+});
+canvas.addEventListener('contextmenu', (e) => {
+  const r = canvas.getBoundingClientRect(),
+    mx = e.clientX - r.left,
+    my = e.clientY - r.top;
+  if (isMinimapPoint(mx, my)) {
+    e.preventDefault();
+    return;
+  }
+  const p = toWorld(mx, my),
+    x = Math.max(0, Math.min(MAP_W - 1, Math.floor(p.x))),
+    y = Math.max(0, Math.min(MAP_H - 1, Math.floor(p.y)));
+  openContext(e, targetAt(x, y), x, y);
+});
+document.addEventListener('click', (e) => {
+  const m = document.getElementById('itemMenu');
+  if (!m.classList.contains('hidden') && !m.contains(e.target)) closeItemMenu();
+});
+function cancelCurrentAction() {
+  const map = document.getElementById('worldMap'),
+    modal = document.getElementById('modal'),
+    context = document.getElementById('contextMenu'),
+    items = document.getElementById('itemMenu');
+  if (!map.classList.contains('hidden')) {
+    closeWorldMap();
+    return;
+  }
+  if (!modal.classList.contains('hidden')) {
+    closeModal();
+    return;
+  }
+  if (!context.classList.contains('hidden')) {
+    closeContext();
+    return;
+  }
+  if (!items.classList.contains('hidden')) {
+    closeItemMenu();
+    return;
+  }
+  if (path.length || moveSegment || pending || combat || skilling || destination) {
+    path = [];
+    pending = null;
+    combat = null;
+    skilling = null;
+    destination = null;
+    message('Action cancelled.', 'game');
+  }
+}
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    save();
+    message('Game saved.', 'good');
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    cancelCurrentAction();
+  } else if (e.key.toLowerCase() === 'r' && !e.repeat) toggleRun();
+  else if (e.key.toLowerCase() === 'h' && !e.repeat) homeTeleport();
+  else if (e.key.toLowerCase() === 'k' && !e.repeat) {
+    const m = window.SFX ? SFX.toggle() : false;
+    message(m ? 'Sound muted.' : 'Sound on.', 'game');
+  }
+  else if (e.key.toLowerCase() === 'm' && !e.repeat) {
+    const map = document.getElementById('worldMap');
+    map.classList.contains('hidden') ? openWorldMap() : closeWorldMap();
+  } else if (e.key.toLowerCase() === 'g' && !e.repeat) openWiki();
+});
+addEventListener('beforeunload', save);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') save();
+});
+function loot(d) {
+  if (d.item === 'coins') player.gold += d.q;
+  else if (!add(d.item, d.q)) return message('Your backpack is full.', 'bad');
+  drops = drops.filter((x) => x !== d);
+  message(`You take ${d.q} ${ITEMS[d.item].name}.`, 'good');
+  if (player.story.q === 1 && player.story.step === 1 && invCount('hide') >= 3) {
+    player.story.step = 2;
+    questUpdate();
+  }
+  renderPanel();
+}
+function lootPile(x, y) {
+  const pile = drops.filter((d) => d.x === x && d.y === y);
+  if (!pile.length) return;
+  let taken = 0;
+  for (const d of pile) {
+    if (d.item === 'coins') {
+      player.gold += d.q;
+      drops = drops.filter((v) => v !== d);
+      taken++;
+    } else if (canAdd(d.item)) {
+      add(d.item, d.q);
+      drops = drops.filter((v) => v !== d);
+      taken++;
+    }
+  }
+  if (taken) message(`You take ${taken} stack${taken === 1 ? '' : 's'} from the ground.`, 'good');
+  if (drops.some((d) => d.x === x && d.y === y))
+    message('Some items remain because your backpack is full.', 'bad');
+  if (player.story.q === 1 && player.story.step === 1 && invCount('hide') >= 3) {
+    player.story.step = 2;
+    questUpdate();
+  }
+  renderPanel();
+  updateUI();
+}
+function talk(n) {
+  if (n.id === 'elowen') {
+    advanceTutorial(2);
+    return guide();
+  }
+  if (n.id === 'rowan') return rowan();
+  if (n.id === 'mira') return mira();
+  if (n.id === 'bren') return slayerContract();
+  if (n.id === 'tamsin') return oakridgeInn();
+  if (n.id === 'willow') return willowElder();
+  if (n.id === 'orin') return shop("Orin's Hunting Supplies", 'hunter');
+  if (n.id === 'vale') return scoutVale();
+  if (n.id === 'mara') return maraQuest();
+  if (n.id === 'edric') return embercrossRest();
+  if (n.id === 'sable') return sableQuest();
+  if (n.id === 'fenwick') return shop('Fenwick - Mirehaven Supplies', 'mirehaven');
+  if (n.id === 'torren') return shop("Torren's Mining Tools", 'smith');
+  if (n.id === 'alaric') return shop("Alaric's General Store", 'general');
+  if (n.id === 'murphy') return shop("Murphy's Fishing Supplies", 'fishing');
+  if (n.id === 'banker') return bank();
+  return showModal(n.name, n.dialogue || 'Good day, traveller.', [['Continue', closeModal]]);
+}
+function sableQuest() {
+  const q = player.sideQuests.cureMirehaven,
+    ready = invCount('bogMoss') >= 4;
+  if (player.story.q < 1)
+    return showModal(
+      'Healer Sable',
+      'Mirehaven needs proven hands. Help Heartwood first, then return to our marsh.',
+      [['Continue', closeModal]],
+    );
+  if (q.step === 0)
+    return showModal(
+      'Healer Sable',
+      'Marsh fever has reached every home. Boglings carry moss that resists the sickness. Bring me four clumps and I can prepare a cure.',
+      [
+        [
+          'Begin A Cure for Mirehaven',
+          () => {
+            q.step = 1;
+            message('Side quest started: A Cure for Mirehaven.', 'game');
+            closeModal();
+            renderPanel();
+            updateUI();
+            save();
+          },
+        ],
+        ['Not now', closeModal],
+      ],
+    );
+  if (q.step === 1 && !ready)
+    return showModal(
+      'Healer Sable',
+      `You have ${invCount('bogMoss')} of 4 Bog moss. Boglings gather beyond Mirehaven's fence.`,
+      [['Continue', closeModal]],
+    );
+  if (q.step === 1)
+    return showModal(
+      'Healer Sable',
+      'This moss is strong enough. Tonight the fever will finally break.',
+      [
+        [
+          'Complete quest',
+          () => {
+            add('bogMoss', -4);
+            add('mireCharm', 1, true);
+            add('antidote', 2, true);
+            player.gold += 160;
+            player.xp.Herblore += 90;
+            player.xp.Defence += 50;
+            q.step = 2;
+            message(
+              'Side quest complete: A Cure for Mirehaven! +160 coins, Mirehaven charm, 2 antidotes, Herblore and Defence XP.',
+              'good',
+            );
+            closeModal();
+            renderPanel();
+            updateUI();
+            save();
+          },
+        ],
+        ['Not yet', closeModal],
+      ],
+    );
+  showModal(
+    'Healer Sable',
+    'The fever has passed. Mirehaven remembers the traveller who carried hope through the bog.',
+    [['Continue', closeModal]],
+  );
+}
+function maraQuest() {
+  const q = player.sideQuests.brokenRoad,
+    shopOption = ['Browse provisions', () => shop('Mara - Embercross Provisions', 'embercross')];
+  if (player.story.q < 1)
+    return showModal(
+      'Mara',
+      'Embercross serves travellers heading east. Prove yourself in Heartwood, then I may have work for you.',
+      [shopOption, ['Leave', closeModal]],
+    );
+  if (q.step === 0)
+    return showModal(
+      'Mara',
+      'Road bandits are stealing our food shipments before they reach Embercross. Defeat four of them and I will give you a buckler from the old road watch.',
+      [
+        [
+          'Begin The Broken Road',
+          () => {
+            q.step = 1;
+            q.kills = 0;
+            message('Side quest started: The Broken Road.', 'game');
+            closeModal();
+            renderPanel();
+            updateUI();
+            save();
+          },
+        ],
+        shopOption,
+        ['Not now', closeModal],
+      ],
+    );
+  if (q.step === 1 && q.kills >= 4)
+    return showModal(
+      'Mara',
+      'The supply carts arrived safely. This Embercross buckler belonged to the old road watch. Carry it with our thanks.',
+      [
+        [
+          'Complete quest',
+          () => {
+            q.step = 2;
+            player.gold += 160;
+            player.xp.Defence += 80;
+            player.xp.Slayer += 60;
+            add('roadBuckler', 1, true);
+            message(
+              'Side quest complete: The Broken Road! +160 coins, +80 Defence XP, +60 Slayer XP.',
+              'good',
+            );
+            closeModal();
+            renderPanel();
+            updateUI();
+            save();
+          },
+        ],
+        shopOption,
+      ],
+    );
+  if (q.step === 1)
+    return showModal(
+      'Mara',
+      'You have defeated ' +
+        q.kills +
+        ' of 4 road bandits. They stalk the roads east and south of Embercross.',
+      [shopOption, ['Continue', closeModal]],
+    );
+  showModal(
+    'Mara',
+    'The road watch buckler suits you. Our supply carts still remember your name.',
+    [shopOption, ['Continue', closeModal]],
+  );
+}
+function embercrossRest() {
+  const wait = Math.max(0, 300000 - (Date.now() - player.roadsideBlessAt));
+  if (wait)
+    return showModal(
+      'Brother Edric',
+      'The wayfire blessing needs time to settle. Return in ' +
+        Math.ceil(wait / 60000) +
+        ' minute' +
+        (wait > 60000 ? 's' : '') +
+        '.',
+      [['Continue', closeModal]],
+    );
+  showModal(
+    'Brother Edric',
+    'Rest beside the Embercross wayfire. Its blessing will restore your Hitpoints, Prayer, and run energy. There is no charge for travellers.',
+    [
+      [
+        'Rest by the wayfire',
+        () => {
+          closeModal();
+          combat = null;
+          path = [];
+          moveSegment = null;
+          pending = null;
+          skilling = { type: 'roadsideBless', next: tickCount + 4 };
+          lastActionAt = performance.now();
+          actionDuration = TICK_MS * 4;
+          message('You kneel beside the Embercross wayfire.', 'game');
+        },
+      ],
+      ['Leave', closeModal],
+    ],
+  );
+}
+function oakridgeInn() {
+  const q = player.sideQuests.hearthAndHome,
+    questOption =
+      player.story.q >= 1
+        ? [
+            q.step === 0
+              ? 'Ask if Tamsin needs help'
+              : q.step === 1
+                ? 'Discuss Hearth and Home'
+                : 'Remember the village feast',
+            tamsinQuest,
+          ]
+        : [
+            'Ask about work',
+            () =>
+              showModal(
+                'Tamsin',
+                'Help Captain Rowan first. Oakridge must be secure before we can think about a proper village feast.',
+                [['Back', oakridgeInn]],
+              ),
+          ];
+  showModal(
+    'Tamsin - The Resting Stag',
+    'A warm hearth, a hearty stew, and a safe bed await. Resting costs 5 coins and restores Hitpoints, Prayer, and run energy.',
+    [
+      questOption,
+      ['Rest for 5 coins', restAtInn],
+      ['Buy Oakridge stew - 8 coins', () => buyInnStew()],
+      [
+        'Ask about Oakridge',
+        () =>
+          showModal(
+            'Tamsin',
+            'The goblins came first. Then the old Barrow began glowing. Captain Rowan keeps watch, but even captains need travellers brave enough to leave the walls.',
+            [['Back', oakridgeInn]],
+          ),
+      ],
+      ['Leave', closeModal],
+    ],
+  );
+}
+function tamsinQuest() {
+  const q = player.sideQuests.hearthAndHome,
+    ready = invCount('rawMeat') >= 1 && invCount('cabbage') >= 1 && invCount('herb') >= 1;
+  if (q.step === 0)
+    return showModal(
+      'Tamsin',
+      'Oakridge has survived, but surviving is not the same as living. Bring me raw boar meat, a cabbage, and a wild herb. I will cook a feast worthy of our village hearth.',
+      [
+        [
+          'Begin Hearth and Home',
+          () => {
+            q.step = 1;
+            message('Side quest started: Hearth and Home.', 'game');
+            closeModal();
+            renderPanel();
+            updateUI();
+            save();
+          },
+        ],
+        ['Not now', oakridgeInn],
+      ],
+    );
+  if (q.step === 1 && !ready)
+    return showModal(
+      'Tamsin',
+      `For the feast I still need:${invCount('rawMeat') ? '' : ' raw boar meat'}${invCount('cabbage') ? '' : ' a cabbage'}${invCount('herb') ? '' : ' a wild herb'}.`,
+      [['Back', oakridgeInn]],
+    );
+  if (q.step === 1)
+    return showModal(
+      'Tamsin',
+      'Everything is here. The Resting Stag will be full tonight, and Oakridge will remember who made the feast possible.',
+      [
+        [
+          'Complete Hearth and Home',
+          () => {
+            add('rawMeat', -1);
+            add('cabbage', -1);
+            add('herb', -1);
+            add('stew', 3, true);
+            player.gold += 120;
+            player.xp.Cooking += 80;
+            player.xp.Farming += 40;
+            q.step = 2;
+            message(
+              'Side quest complete: Hearth and Home! +120 coins, 3 Oakridge stews, Cooking and Farming XP.',
+              'good',
+            );
+            closeModal();
+            renderPanel();
+            updateUI();
+            save();
+          },
+        ],
+        ['Back', oakridgeInn],
+      ],
+    );
+  showModal(
+    'Tamsin',
+    'The feast gave Oakridge something it had nearly forgotten: a reason to celebrate.',
+    [['Back', oakridgeInn]],
+  );
+}
+function buyInnStew() {
+  if (player.gold < 8) return message('You do not have enough coins.', 'bad');
+  if (!canAdd('stew')) return message('Your backpack is full.', 'bad');
+  player.gold -= 8;
+  add('stew');
+  message('Tamsin serves you a bowl of Oakridge stew.', 'good');
+  renderPanel();
+  updateUI();
+  oakridgeInn();
+}
+function restAtInn() {
+  if (player.gold < 5) return message('You need 5 coins for a room.', 'bad');
+  closeModal();
+  combat = null;
+  path = [];
+  moveSegment = null;
+  pending = null;
+  skilling = { type: 'innRest', next: tickCount + 5 };
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 5;
+  message('You settle into a warm bed at the Resting Stag.', 'game');
+}
+function willowElder() {
+  const q = player.sideQuests.boarHunt;
+  if (q.step === 0)
+    return showModal(
+      'Elder Willow',
+      'Wild boars are tearing through our winter stores. Drive back three of them and Willowmere will remember your help.',
+      [
+        [
+          'Begin The Boar Hunt',
+          () => {
+            q.step = 1;
+            q.kills = 0;
+            message('Side quest started: The Boar Hunt.', 'game');
+            closeModal();
+            renderPanel();
+            updateUI();
+            save();
+          },
+        ],
+        ['Woodland blessing - 10 coins', willowBlessing],
+        ['Not now', closeModal],
+      ],
+    );
+  if (q.step === 1 && q.kills >= 3)
+    return showModal(
+      'Elder Willow',
+      'The eastern hedge is quiet again. Take this mantle, woven in Willowmere, with our thanks.',
+      [
+        [
+          'Complete quest',
+          () => {
+            q.step = 2;
+            player.gold += 150;
+            player.xp.Slayer += 80;
+            player.xp.Cooking += 50;
+            add('willowMantle', 1, true);
+            message(
+              'Side quest complete: The Boar Hunt! +150 coins, +80 Slayer XP, +50 Cooking XP.',
+              'good',
+            );
+            closeModal();
+            renderPanel();
+            updateUI();
+            save();
+          },
+        ],
+      ],
+    );
+  if (q.step === 1)
+    return showModal(
+      'Elder Willow',
+      `You have driven back ${q.kills} of 3 wild boars. They roam beyond the eastern hedge.`,
+      [
+        ['Woodland blessing - 10 coins', willowBlessing],
+        ['Continue', closeModal],
+      ],
+    );
+  showModal('Elder Willow', 'Willowmere remembers its friends. The mantle suits you.', [
+    ['Woodland blessing - 10 coins', willowBlessing],
+    ['Continue', closeModal],
+  ]);
+}
+function scoutVale() {
+  const q = player.sideQuests.silkAndCinders;
+  if (player.story.q < 2)
+    return showModal(
+      'Scout Vale',
+      'The eastern road is dangerous. Captain Rowan should know when you are ready for frontier work.',
+      [['Continue', closeModal]],
+    );
+  if (q.step === 0)
+    return showModal(
+      'Scout Vale',
+      'Cave spiders are nesting beneath the Ashen Barrow. Bring down four of them so I can map a safe route for Mira. Keep the silk; Torren knows a weaver.',
+      [
+        [
+          'Begin Silk and Cinders',
+          () => {
+            q.step = 1;
+            q.kills = 0;
+            message('Side quest started: Silk and Cinders.', 'game');
+            closeModal();
+            renderPanel();
+            updateUI();
+            save();
+          },
+        ],
+        ['Not now', closeModal],
+      ],
+    );
+  if (q.step === 1 && q.kills >= 4)
+    return showModal(
+      'Scout Vale',
+      'The tunnels are quieter, and your silk proves the route. Take this cave-silk robe and these runes for the darkness ahead.',
+      [
+        [
+          'Complete quest',
+          () => {
+            q.step = 2;
+            player.gold += 180;
+            player.xp.Magic += 100;
+            player.xp.Slayer += 70;
+            add('silkRobe', 1, true);
+            add('emberRune', 20, true);
+            message(
+              'Side quest complete: Silk and Cinders! +180 coins, +100 Magic XP, +70 Slayer XP.',
+              'good',
+            );
+            closeModal();
+            renderPanel();
+            updateUI();
+            save();
+          },
+        ],
+      ],
+    );
+  if (q.step === 1)
+    return showModal(
+      'Scout Vale',
+      'You have defeated ' + q.kills + ' of 4 cave spiders. Search the lower Ashen Barrow tunnels.',
+      [['Continue', closeModal]],
+    );
+  showModal(
+    'Scout Vale',
+    'Your work made the Barrow road safer. Mira still studies the cinders you recovered.',
+    [['Continue', closeModal]],
+  );
+}
+function willowBlessing() {
+  if (player.gold < 10) return message('You need 10 coins for an offering.', 'bad');
+  closeModal();
+  combat = null;
+  skilling = { type: 'willowBlessing', next: tickCount + 4 };
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 4;
+  message('Elder Willow begins the woodland blessing.', 'game');
+}
+function slayerContract() {
+  const c = player.contract;
+  if (c && c.remaining === 0) {
+    const coins = 40 + c.total * 15,
+      xp = c.total * 18;
+    player.gold += coins;
+    player.xp.Slayer += xp;
+    player.contract = null;
+    showModal(
+      'Contract complete!',
+      `Guard Bren pays you ${coins} coins and awards ${xp} Slayer XP.`,
+      [['Continue', closeModal]],
+    );
+    message(`Monster contract complete: +${coins} coins, +${xp} Slayer XP.`, 'good');
+    renderPanel();
+    updateUI();
+    return;
+  }
+  if (c)
+    return showModal(
+      'Guard Bren',
+      `Your contract is to defeat ${c.total} ${c.name}s. You have ${c.remaining} remaining.`,
+      [['Continue', closeModal]],
+    );
+  const q = player.story.q,
+    pool =
+      q >= 2
+        ? [
+            ['goblin', 'Goblin raider'],
+            ['wolf', 'Grey wolf'],
+            ['bandit', 'Road bandit'],
+            ['skeleton', 'Barrow skeleton'],
+            ['bat', 'Ash bat'],
+            ['spider', 'Cave spider'],
+          ]
+        : q >= 1
+          ? [
+              ['goblin', 'Goblin raider'],
+              ['wolf', 'Grey wolf'],
+              ['boar', 'Wild boar'],
+            ]
+          : [
+              ['rat', 'Giant rat'],
+              ['goblin', 'Goblin raider'],
+            ],
+    pick = pool[Math.floor(Math.random() * pool.length)],
+    total = q >= 2 ? 6 : q >= 1 ? 5 : 4;
+  showModal(
+    'Guard Bren',
+    `I have a standing contract for ${total} ${pick[1]}s. It pays coins and Slayer experience.`,
+    [
+      [
+        'Accept contract',
+        () => {
+          player.contract = { kind: pick[0], name: pick[1], total, remaining: total };
+          message(`New contract: defeat ${total} ${pick[1]}s.`, 'game');
+          closeModal();
+          renderPanel();
+          updateUI();
+        },
+      ],
+      ['Not now', closeModal],
+    ],
+  );
+}
+function guide() {
+  const s = player.story;
+  if (s.q === 0 && s.step === 0) {
+    s.step = 1;
+    showModal(
+      'Guide Elowen',
+      'First learn our trades. Murphy waits beside the western docks. Buy a rod and three bait.',
+      [
+        [
+          'Begin quest',
+          () => {
+            message('Quest started: A Guide to Heartwood.', 'game');
+            closeModal();
+          },
+        ],
+      ],
+    );
+  } else if (s.q === 0 && s.step === 5) {
+    s.q = 1;
+    s.step = 0;
+    player.gold += 100;
+    player.xp.Attack += 60;
+    showModal(
+      'Quest complete!',
+      'Heartwood welcomes you. Captain Rowan in Oakridge has sent for aid.',
+      [['Continue', closeModal]],
+    );
+    message('Quest complete: A Guide to Heartwood!', 'good');
+  } else
+    showModal(
+      'Guide Elowen',
+      s.q === 0 ? QUESTS[0].steps[s.step] : 'Captain Rowan waits in Oakridge, northwest of here.',
+      [['Continue', closeModal]],
+    );
+}
+function rowan() {
+  const s = player.story;
+  if (s.q < 1)
+    return showModal('Captain Rowan', 'Prove yourself to Guide Elowen first.', [
+      ['Continue', closeModal],
+    ]);
+  if (s.q === 1 && s.step === 0) {
+    s.step = 1;
+    showModal(
+      'Captain Rowan',
+      'Goblin raiders are probing our walls. Bring me three of their hides as proof.',
+      [
+        [
+          'Accept quest',
+          () => {
+            message('Quest started: Shadows Over Oakridge.', 'game');
+            closeModal();
+          },
+        ],
+      ],
+    );
+  } else if (s.q === 1 && s.step === 2) {
+    add('hide', -3);
+    s.step = 3;
+    showModal(
+      'Captain Rowan',
+      'These markings belong to the Ashen Barrow cult. Take my blade and find Scholar Mira at the eastern frontier.',
+      [
+        [
+          'Take the blade',
+          () => {
+            add('steelSword', 1, true);
+            player.gold += 120;
+            questUpdate();
+            closeModal();
+          },
+        ],
+      ],
+    );
+  } else
+    showModal(
+      'Captain Rowan',
+      s.q === 1 ? QUESTS[1].steps[s.step] : 'Oakridge stands because of you.',
+      [['Continue', closeModal]],
+    );
+}
+function mira() {
+  const s = player.story;
+  if (s.q >= 3) return ashenExchange();
+  if (s.q === 1 && s.step === 3) {
+    s.q = 2;
+    s.step = 0;
+    showModal(
+      'Scholar Mira',
+      'The hides bear an old barrow sigil. I need your help below the eastern ruins.',
+      [['Continue', closeModal]],
+    );
+  } else if (s.q === 2 && s.step === 0) {
+    s.step = 1;
+    showModal(
+      'Scholar Mira',
+      'A Barrow guardian stalks the surface ruins beside the dungeon entrance. Defeat it and recover the key.',
+      [
+        [
+          'Accept quest',
+          () => {
+            message('Quest started: Beneath the Ashen Barrow.', 'game');
+            closeModal();
+          },
+        ],
+      ],
+    );
+  } else if (s.q === 2 && s.step === 4 && invCount('relic')) {
+    add('relic', -1);
+    s.q = 3;
+    s.step = 0;
+    player.gold += 300;
+    player.xp.Attack += 200;
+    showModal(
+      'Chapter complete!',
+      'The Ember relic is safe. You receive 300 coins and 200 Attack XP.',
+      [['Continue', closeModal]],
+    );
+    message('Quest complete: Beneath the Ashen Barrow!', 'good');
+  } else
+    showModal(
+      'Scholar Mira',
+      s.q === 2 ? QUESTS[2].steps[s.step] : 'The frontier is quiet - for now.',
+      [['Continue', closeModal]],
+    );
+}
+function ashenExchange() {
+  const shards = invCount('ashenShard');
+  showModal(
+    'Scholar Mira - Ashen Studies',
+    `The Warden reforms, but each defeat leaves unstable Ashen shards. I can safely exchange them for supplies. You carry ${shards}.`,
+    [
+      ['3 shards - 25 Ember runes', () => tradeShards(3, 'emberRune', 25)],
+      ['5 shards - 3 healing potions', () => tradeShards(5, 'healingPotion', 3)],
+      ['8 shards - 250 coins', () => tradeShards(8, null, 250)],
+      ['Leave', closeModal],
+    ],
+  );
+}
+function tradeShards(cost, item, qty) {
+  if (invCount('ashenShard') < cost) return message(`You need ${cost} Ashen shards.`, 'bad');
+  if (item && !canAdd(item) && invCount('ashenShard') > cost)
+    return message('Your backpack is full.', 'bad');
+  add('ashenShard', -cost);
+  if (item) add(item, qty);
+  else player.gold += qty;
+  message(
+    `Mira exchanges ${cost} Ashen shards for ${item ? qty + ' ' + ITEMS[item].name : qty + ' coins'}.`,
+    'good',
+  );
+  renderPanel();
+  updateUI();
+  save();
+  ashenExchange();
+}
+function questUpdate() {
+  message('Quest updated: ' + currentObjective(), 'game');
+  renderPanel();
+}
+// ---- Starter training quests: teach each skill group, reward coins + skill XP ----
+const STARTER_QUESTS = [
+  {
+    id: 'lineHearth',
+    name: 'Line & Hearth',
+    group: 'Fishing · Cooking',
+    blurb:
+      'Fish the ripples off the Heartwood docks (rod + bait), then cook your catch on a fire or range.',
+    objectives: [
+      { key: 'fish', label: 'Catch fish at the docks', goal: 5 },
+      { key: 'cook', label: 'Cook raw fish or meat', goal: 5 },
+    ],
+    reward: { gold: 60, xp: { Fishing: 200, Cooking: 200 } },
+  },
+  {
+    id: 'timberFlame',
+    name: 'Timber & Flame',
+    group: 'Woodcutting · Firemaking',
+    blurb: 'Chop logs from the trees around Heartwood, then light them with a tinderbox.',
+    objectives: [
+      { key: 'chop', label: 'Chop logs from trees', goal: 5 },
+      { key: 'fire', label: 'Light fires with a tinderbox', goal: 3 },
+    ],
+    reward: { gold: 60, xp: { Woodcutting: 200, Firemaking: 160 } },
+  },
+  {
+    id: 'stoneSteel',
+    name: 'Stone & Steel',
+    group: 'Mining · Smithing',
+    blurb: 'Mine copper and iron from the rocks, then smith them into bars and gear at the forge.',
+    objectives: [
+      { key: 'mine', label: 'Mine ore from rocks', goal: 5 },
+      { key: 'smith', label: 'Smith bars or gear at the forge', goal: 3 },
+    ],
+    reward: { gold: 70, xp: { Mining: 200, Smithing: 200 } },
+  },
+  {
+    id: 'bladeBulwark',
+    name: 'Blade & Bulwark',
+    group: 'Attack · Strength · Defence',
+    blurb:
+      'Draw a weapon and defeat foes near Heartwood. Swap combat styles in the Gear tab to train each melee skill.',
+    objectives: [{ key: 'kill', label: 'Defeat enemies in combat', goal: 6 }],
+    reward: { gold: 70, xp: { Attack: 150, Strength: 150, Defence: 150, Hitpoints: 80 } },
+  },
+  {
+    id: 'sparkSpirit',
+    name: 'Spark & Spirit',
+    group: 'Magic · Prayer',
+    blurb: 'Equip an ember staff and cast spells in battle, then bury the bones your foes drop.',
+    objectives: [
+      { key: 'cast', label: 'Cast combat spells', goal: 5 },
+      { key: 'bury', label: 'Bury bones', goal: 3 },
+    ],
+    reward: { gold: 70, xp: { Magic: 200, Prayer: 150 } },
+  },
+  {
+    id: 'rootRemedy',
+    name: 'Root & Remedy',
+    group: 'Farming · Herblore',
+    blurb: 'Plant and harvest crops at the Heartwood farm patch, then brew them into potions.',
+    objectives: [
+      { key: 'farm', label: 'Harvest crops from patches', goal: 3 },
+      { key: 'pot', label: 'Brew potions', goal: 2 },
+    ],
+    reward: { gold: 70, xp: { Farming: 150, Herblore: 200 } },
+  },
+];
+function starterProgress(o) {
+  return Math.min(o.goal, player.tally[o.key] || 0);
+}
+function starterDone(q) {
+  return q.objectives.every((o) => starterProgress(o) >= o.goal);
+}
+function tally(type, n = 1) {
+  player.tally[type] = (player.tally[type] || 0) + n;
+  // Never let a training-quest hiccup interrupt the core skill action that called us.
+  try {
+    checkStarterQuests();
+  } catch (e) {
+    console.warn('starter quest check failed', e);
+  }
+}
+function checkStarterQuests() {
+  for (const q of STARTER_QUESTS) {
+    if (player.starterClaimed[q.id] || !starterDone(q)) continue;
+    player.starterClaimed[q.id] = true;
+    player.gold += q.reward.gold;
+    const parts = [];
+    for (const [sk, amt] of Object.entries(q.reward.xp)) {
+      player.xp[sk] += amt;
+      parts.push(`${amt} ${sk}`);
+    }
+    if (window.SFX) SFX.play('level');
+    message(
+      `Training quest complete: ${q.name}! +${q.reward.gold} coins and ${parts.join(', ')} XP.`,
+      'good',
+    );
+    renderPanel();
+    updateUI();
+    save();
+  }
+}
+function activeQuestTarget() {
+  const s = player.story,
+    npc = (id) => {
+      const n = NPCS.find((v) => v.id === id);
+      return n ? { x: n.drawX, y: n.drawY, label: n.name, layer: 'surface' } : null;
+    },
+    enemy = (kind, label) => {
+      const pool = monsters
+          .filter((m) => m.kind === kind)
+          .sort((a, b) => tileDistance(player, a) - tileDistance(player, b)),
+        m = pool.find((m) => m.alive) || pool[0];
+      return m
+        ? { x: m.drawX, y: m.drawY, label, layer: inDungeon(m.x, m.y) ? 'dungeon' : 'surface' }
+        : null;
+    };
+  if (s.q === 0)
+    return (
+      [
+        npc('elowen'),
+        npc('murphy'),
+        { x: 78, y: 124, label: 'Fishing spot', layer: 'surface' },
+        { x: 100, y: 126, label: 'Cooking range', layer: 'surface' },
+        enemy('goblin', 'Goblin raider'),
+        npc('elowen'),
+      ][s.step] || null
+    );
+  if (s.q === 1)
+    return (
+      [npc('rowan'), enemy('goblin', 'Goblin raider'), npc('rowan'), npc('mira')][s.step] || null
+    );
+  if (s.q === 2)
+    return (
+      [
+        npc('mira'),
+        enemy('guardian', 'Barrow guardian'),
+        { x: 40, y: 52, label: 'Ashen Barrow entrance', layer: 'surface' },
+        inDungeon(player.x, player.y)
+          ? enemy('warden', 'Ashen Warden')
+          : { x: 40, y: 52, label: 'Ashen Barrow entrance', layer: 'surface' },
+        npc('mira'),
+      ][s.step] || null
+    );
+  const rq = player.sideQuests.brokenRoad,
+    bq = player.sideQuests.boarHunt,
+    sq = player.sideQuests.silkAndCinders,
+    hq = player.sideQuests.hearthAndHome,
+    mq = player.sideQuests.cureMirehaven;
+  if (rq.step === 1 && rq.kills >= 4) return npc('mara');
+  if (bq.step === 1 && bq.kills >= 3) return npc('willow');
+  if (sq.step === 1 && sq.kills >= 4) return npc('vale');
+  if (mq.step === 1 && invCount('bogMoss') >= 4) return npc('sable');
+  if (mq.step === 1) return enemy('bogling', 'Bogling');
+  if (hq.step === 1 && invCount('rawMeat') && invCount('cabbage') && invCount('herb'))
+    return npc('tamsin');
+  if (hq.step === 1 && !invCount('rawMeat')) return enemy('boar', 'Wild boar');
+  if (hq.step === 1 && !invCount('cabbage'))
+    return invCount('cabbageSeed')
+      ? { x: 92, y: 140, label: 'Greenrest farm patch', layer: 'surface' }
+      : npc('alaric');
+  if (hq.step === 1 && !invCount('herb')) return enemy('goblin', 'Goblin raider');
+  if (rq.step === 1) return enemy('bandit', 'Road bandit');
+  if (bq.step === 1) return enemy('boar', 'Wild boar');
+  if (sq.step === 1)
+    return inDungeon(player.x, player.y)
+      ? enemy('spider', 'Cave spider')
+      : { x: 40, y: 52, label: 'Ashen Barrow entrance', layer: 'surface' };
+  const id = questNpcId();
+  return id ? npc(id) : null;
+}
+function currentObjective() {
+  const s = player.story;
+  return s.q >= QUESTS.length ? 'Chapter One complete' : QUESTS[s.q].steps[s.step];
+}
+function usePortal(p) {
+  const s = player.story;
+  if (p.x === 40 && s.q === 2 && s.step < 2)
+    return message('The barrow door is sealed. Scholar Mira knows more.', 'bad');
+  if (p.x === 40 && s.q === 2 && s.step === 2) {
+    add('key', -1);
+    s.step = 3;
+    questUpdate();
+  }
+  if (p.x === 40) {
+    const warden = monsters.find((m) => m.kind === 'warden');
+    if (warden?.alive && !barrowChestReady() && !player.barrowRunStartedAt) {
+      player.barrowRunStartedAt = Date.now();
+      player.barrowPotential = 0;
+      message('Ashen Barrow run started.', 'game');
+    }
+  } else if (p.x === 20 && player.barrowRunStartedAt) {
+    player.barrowRunStartedAt = 0;
+    player.barrowPotential = 0;
+    message('Ashen Barrow run abandoned.', 'bad');
+  }
+  player.x = p.toX;
+  player.y = p.toY;
+  player.drawX = p.toX;
+  player.drawY = p.toY;
+  path = [];
+  moveSegment = null;
+  destination = null;
+  message(p.label + '.', 'game');
+  checkRegion();
+  save();
+}
+function pullDungeonLever() {
+  if (player.barrowGateOpen) return message('The lever will not move any further.', 'game');
+  combat = null;
+  skilling = { type: 'barrowLever', next: tickCount + 3 };
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 3;
+  message('You strain against the ancient lever...', 'game');
+}
+function barrowChestReady() {
+  return (player.killLog.warden || 0) > player.wardenKillsClaimed;
+}
+function openDungeonChest() {
+  const warden = monsters.find((m) => m.kind === 'warden');
+  if (warden && warden.alive)
+    return message('A dark force seals the chest. Defeat the Ashen Warden.', 'bad');
+  if (!barrowChestReady())
+    return message('The Warden chest is dormant. Defeat the Ashen Warden to awaken it.', 'game');
+  player.wardenKillsClaimed = player.killLog.warden || 0;
+  player.barrowRuns++;
+  const potential = player.barrowPotential || 0;
+  player.barrowBestPotential = Math.max(player.barrowBestPotential || 0, potential);
+  if (player.barrowRunStartedAt) {
+    player.barrowLastMs = Date.now() - player.barrowRunStartedAt;
+    if (!player.barrowBestMs || player.barrowLastMs < player.barrowBestMs) {
+      player.barrowBestMs = player.barrowLastMs;
+      message(`New Barrow personal best: ${formatRunTime(player.barrowBestMs)}!`, 'good');
+    } else message(`Barrow clear time: ${formatRunTime(player.barrowLastMs)}.`, 'game');
+    player.barrowRunStartedAt = 0;
+  }
+  if (!player.chestLooted) {
+    player.chestLooted = true;
+    player.gold += 100;
+    add('spiderSilk', 3, true);
+    add('wardenCloak', 1, true);
+    player.collection.barrow.cloak = true;
+    message('First Barrow clear! You find 100 coins, 3 cave silk, and the Warden cloak.', 'good');
+  } else {
+    const coins = 45 + Math.floor(Math.random() * 56) + Math.floor(potential * 0.8),
+      runes = 4 + Math.floor(Math.random() * 9) + Math.floor(potential / 20),
+      silk = 1 + Math.floor(Math.random() * 3) + Math.floor(potential / 35),
+      shards = Math.random() < Math.min(0.85, 0.2 + potential / 150) ? 1 : 0;
+    player.gold += coins;
+    add('emberRune', runes, true);
+    add('spiderSilk', silk, true);
+    if (shards) add('ashenShard', shards, true);
+    const uniqueRoll = Math.random(),
+      guardChance = 0.02 + potential * 0.0008,
+      lanternChance = 0.04 + potential * 0.001;
+    let unique = '';
+    if (uniqueRoll < guardChance) {
+      add('ashenGuard', 1, true);
+      player.collection.barrow.guard = true;
+      unique = ' You also discover the rare Ashen guard!';
+    } else if (uniqueRoll < guardChance + lanternChance) {
+      add('barrowLantern', 1, true);
+      player.collection.barrow.lantern = true;
+      unique = ' You also discover a Barrow lantern!';
+    }
+    message(
+      `Barrow run ${player.barrowRuns} complete! ${coins} coins, ${runes} Ember runes, ${silk} cave silk${shards ? ' and an Ashen shard' : ''} at ${potential}% potential.${unique}`,
+      'good',
+    );
+  }
+  player.barrowPotential = 0;
+  renderPanel();
+  updateUI();
+  save();
+}
+function shop(title, id) {
+  const rows = SHOPS[id].map(([item, price]) => [
+    `Buy ${ITEMS[item].name} - ${price} coins`,
+    () => buy(item, price),
+  ]);
+  const saleable = Object.entries(player.inv).filter(
+    ([item, q]) => q > 0 && (ITEMS[item].value || 0) > 0,
+  );
+  for (const [item, q] of saleable)
+    rows.push([
+      `Sell ${ITEMS[item].name} x${q} - ${Math.max(1, Math.floor(ITEMS[item].value * 0.6)) * q} coins`,
+      () => sellItem(item, q, title, id),
+    ]);
+  rows.push(['Close', closeModal]);
+  showModal(
+    title,
+    saleable.length ? 'Buy supplies or sell your carried goods.' : 'What would you like to buy?',
+    rows,
+  );
+}
+function buy(id, price) {
+  if (player.gold < price) return message('You do not have enough coins.', 'bad');
+  if (!canAdd(id)) return message('Your backpack is full.', 'bad');
+  player.gold -= price;
+  add(id);
+  message(`You buy ${ITEMS[id].name}.`, 'good');
+  if (player.story.q === 0 && player.story.step === 1 && invCount('rod') && invCount('bait') >= 3) {
+    player.story.step = 2;
+    questUpdate();
+  }
+  renderPanel();
+}
+function sellItem(id, q, title, shopId) {
+  const price = Math.max(1, Math.floor(ITEMS[id].value * 0.6)) * q;
+  add(id, -q);
+  player.gold += price;
+  if (window.SFX) SFX.play('coins');
+  message(`You sell ${q} ${ITEMS[id].name} for ${price} coins.`, 'good');
+  renderPanel();
+  shop(title, shopId);
+}
+function bankQty(available) {
+  return bankAmount === 'all' ? available : Math.min(bankAmount, available);
+}
+function setBankAmount(amount) {
+  if (amount === 'x') {
+    const n = parseInt(prompt('Enter amount to transfer:', '100'), 10);
+    if (!n || n < 1) return;
+    bankAmount = n;
+  } else bankAmount = amount;
+  bank();
+}
+function bankSlot(id, q, kind) {
+  return `<div class="slot bankslot" data-${kind}="${id}" title="${ITEMS[id].name} x${q}"><img class="ic" src="assets/items/${id}.png" alt="" draggable="false"><span>${q}</span></div>`;
+}
+function bank() {
+  const invEntries = Object.entries(player.inv),
+    bankEntries = Object.entries(player.bank)
+      .filter(([, q]) => q > 0)
+      .sort((a, b) => (ITEMS[a[0]].name < ITEMS[b[0]].name ? -1 : 1));
+  const amounts = [
+    [1, '1'],
+    [5, '5'],
+    [10, '10'],
+    ['all', 'All'],
+    ['x', 'X'],
+  ];
+  const qbar = amounts
+    .map(
+      ([v, label]) => `<button class="qbtn ${bankAmount === v ? 'on' : ''}" data-q="${v}">${label}</button>`,
+    )
+    .join('');
+  const bankGrid = bankEntries.length
+    ? bankEntries.map(([id, q]) => bankSlot(id, q, 'w')).join('')
+    : '<p class="hint" style="grid-column:1/-1;margin:6px 2px">Your bank is empty.</p>';
+  const invGrid = invEntries.length
+    ? invEntries.map(([id, q]) => bankSlot(id, q, 'd')).join('')
+    : '<p class="hint" style="grid-column:1/-1;margin:6px 2px">Your backpack is empty.</p>';
+  modalBody.innerHTML =
+    `<h2>Bank of Emberfall</h2>` +
+    `<div class="bankBar"><span class="hint">Quantity</span>${qbar}<span class="hint bankMeta">Bank ${bankEntries.length} · Pack ${invEntries.length}/${INVENTORY_SLOTS}</span></div>` +
+    `<div class="bankSection">Bank — click an item to withdraw</div><div class="bankGrid">${bankGrid}</div>` +
+    `<div class="bankSection">Backpack — click an item to deposit</div><div class="bankGrid">${invGrid}</div>` +
+    `<div class="bankActions"><button class="choice" data-act="depositAll">Deposit backpack</button><button class="choice" data-act="close">Close</button></div>`;
+  modal.classList.remove('hidden');
+  modalBody
+    .querySelectorAll('[data-q]')
+    .forEach(
+      (b) =>
+        (b.onclick = () =>
+          setBankAmount(b.dataset.q === 'all' || b.dataset.q === 'x' ? b.dataset.q : +b.dataset.q)),
+    );
+  modalBody
+    .querySelectorAll('[data-w]')
+    .forEach((s) => (s.onclick = () => withdraw(s.dataset.w, bankQty(player.bank[s.dataset.w] || 0))));
+  modalBody
+    .querySelectorAll('[data-d]')
+    .forEach((s) => (s.onclick = () => deposit(s.dataset.d, bankQty(invCount(s.dataset.d)))));
+  modalBody.querySelector('[data-act="depositAll"]').onclick = depositAll;
+  modalBody.querySelector('[data-act="close"]').onclick = closeModal;
+}
+function deposit(id, q) {
+  q = Math.min(q, invCount(id));
+  if (!q) return bank();
+  add(id, -q);
+  player.bank[id] = (player.bank[id] || 0) + q;
+  message(`You deposit ${q} ${ITEMS[id].name}.`);
+  renderPanel();
+  bank();
+}
+function withdraw(id, q) {
+  q = Math.min(q, player.bank[id] || 0);
+  if (!q) return bank();
+  if (!canAdd(id)) return message('Your backpack is full.', 'bad');
+  player.bank[id] -= q;
+  if (player.bank[id] <= 0) delete player.bank[id];
+  add(id, q);
+  message(`You withdraw ${q} ${ITEMS[id].name}.`);
+  renderPanel();
+  bank();
+}
+function depositAll() {
+  for (const [id, q] of Object.entries(player.inv)) {
+    player.bank[id] = (player.bank[id] || 0) + q;
+  }
+  player.inv = {};
+  message('You deposit your carried items.');
+  renderPanel();
+  bank();
+}
+function relocateFishSpot(spot) {
+  // EF1: move the ripple to a nearby water tile that still borders a walkable dock/shore
+  const cands = [];
+  for (let dy = -3; dy <= 3; dy++)
+    for (let dx = -3; dx <= 3; dx++) {
+      const x = spot.x + dx,
+        y = spot.y + dy;
+      if ((x === spot.x && y === spot.y) || (tiles[y] && tiles[y][x]) !== 2) continue;
+      const reachable = [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ].some(([ax, ay]) => walkable(x + ax, y + ay));
+      if (reachable) cands.push({ x, y });
+    }
+  if (cands.length) {
+    const p = cands[Math.floor(Math.random() * cands.length)];
+    spot.x = p.x;
+    spot.y = p.y;
+  }
+  spot.movesAt = tickCount + 100;
+}
+function fish(spot = FISH_SPOTS[0]) {
+  if (skilling && skilling.type === 'fish' && skilling.spot === spot) return; // EF1: already fishing here; ignore re-clicks
+  if (level('Fishing') < spot.level)
+    return message(`You need Fishing level ${spot.level} to catch ${spot.catchName}.`, 'bad');
+  if (!invCount('rod') || !invCount('bait'))
+    return message('You need a rod and bait. Murphy sells them.', 'bad');
+  if (!canAdd(spot.item)) return message('Your backpack is full.', 'bad');
+  combat = null;
+  skilling = { type: 'fish', spot, next: tickCount + 3 };
+  if (!spot.movesAt) spot.movesAt = tickCount + 100; // EF1: spot relocates after ~1 min of fishing
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 3;
+  message(`You cast your line for ${spot.catchName}.`, 'game');
+}
+function rawFoodId() {
+  return invCount('rawEel')
+    ? 'rawEel'
+    : invCount('rawFish')
+      ? 'rawFish'
+      : invCount('rawMeat')
+        ? 'rawMeat'
+        : invCount('rabbitMeat')
+          ? 'rabbitMeat'
+          : null;
+}
+function cook(spot) {
+  if (skilling && skilling.type === 'cook') return; // EF1: already cooking; ignore re-clicks
+  if (!rawFoodId()) return message('You have nothing suitable to cook.', 'bad');
+  combat = null;
+  skilling = { type: 'cook', spot: spot && spot.x !== undefined ? spot : null, next: tickCount + 2 };
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 2;
+  message('You start cooking by the fire.', 'game');
+}
+function hasPickaxe() {
+  return invCount('ironPickaxe') || invCount('pickaxe');
+}
+function startHunt(spot) {
+  if (!invCount('snare')) return message('You need a wooden snare. Hunter Orin sells them.', 'bad');
+  if (level('Hunter') < spot.level) return message(`You need Hunter level ${spot.level}.`, 'bad');
+  const needed = ['rabbitMeat', 'rabbitFur'].filter((id) => !invCount(id)).length;
+  if (Object.keys(player.inv).length + needed > INVENTORY_SLOTS)
+    return message('You need two free backpack slots for a catch.', 'bad');
+  combat = null;
+  skilling = { type: 'hunt', spot, next: tickCount + 4 };
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 4;
+  message('You set the snare and wait by the burrow...', 'game');
+}
+function startPickpocket(n) {
+  if (!n.pickpocket) return message('They are watching you too closely.', 'bad');
+  if (tickCount < n.pickpocketUntil)
+    return message(`${n.name} is still alert after the last attempt.`, 'bad');
+  combat = null;
+  skilling = { type: 'pickpocket', npc: n, next: tickCount + 3 };
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 3;
+  message(`You attempt to pick ${n.name}'s pocket...`, 'game');
+}
+function startMining(rock) {
+  if (skilling && skilling.type === 'mine' && skilling.rock === rock) return; // EF1: no spam-clicking
+  if (rock.depletedUntil) return message('The rock is depleted. Give it a moment.', 'game');
+  if (!hasPickaxe())
+    return message('You need a pickaxe. Torren sells them at the eastern frontier.', 'bad');
+  if (level('Mining') < rock.level)
+    return message(`You need Mining level ${rock.level} for this rock.`, 'bad');
+  combat = null;
+  skilling = { type: 'mine', rock, next: tickCount + 1 };
+  message(`You swing your pickaxe at the ${rock.name.toLowerCase()}.`, 'game');
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 3;
+}
+function startChop(tree) {
+  if (skilling && skilling.type === 'chop' && skilling.tree === tree) return; // EF1: no spam-clicking
+  if (!invCount('hatchet')) return message('You need a hatchet. Alaric sells them.', 'bad');
+  if (level('Woodcutting') < tree.level)
+    return message(`You need Woodcutting level ${tree.level}.`, 'bad');
+  combat = null;
+  skilling = { type: 'chop', tree, next: tickCount + 1 };
+  message(`You swing your hatchet at the ${tree.name.toLowerCase()}.`, 'game');
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 4;
+}
+function lightFire() {
+  if (!invCount('tinderbox')) return message('You need a tinderbox. Alaric sells them.', 'bad');
+  if (!invCount('logs')) return message('You have no logs to burn.', 'bad');
+  const spot = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ]
+    .map(([dx, dy]) => ({ x: player.x + dx, y: player.y + dy }))
+    .find(
+      (p) =>
+        walkable(p.x, p.y) &&
+        !fires.some((f) => f.x === p.x && f.y === p.y) &&
+        !NPCS.some((n) => n.x === p.x && n.y === p.y),
+    );
+  if (!spot) return message('There is no room to light a fire here.', 'bad');
+  combat = null;
+  skilling = { type: 'fire', spot, next: tickCount + 2 };
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 2;
+  message('You begin arranging the logs.', 'game');
+}
+function resourceTick() {
+  if (player.grave && Date.now() >= player.grave.expiresAt) bankGrave();
+  fires = fires.filter((f) => f.expires > tickCount);
+  drops = drops.filter((d) => !d.despawn || d.despawn > tickCount);
+  for (const t of TREES)
+    if (t.depletedUntil && tickCount >= t.depletedUntil) {
+      if (player.x === t.x && player.y === t.y) {
+        t.depletedUntil++;
+        continue;
+      }
+      t.depletedUntil = 0;
+      t.chops = 0;
+      tiles[t.y][t.x] = 3;
+    }
+  for (const r of ROCKS)
+    if (r.depletedUntil && tickCount >= r.depletedUntil) {
+      r.depletedUntil = 0;
+      r.mined = 0;
+    }
+}
+function skillTick() {
+  if (tickCount < skilling.next) return;
+  if (skilling.type === 'fish') {
+    const spot = skilling.spot;
+    if (!adjacent(player, spot)) {
+      skilling = null;
+      return message('You move away from the fishing spot.', 'bad');
+    }
+    if (!invCount('rod') || !invCount('bait')) {
+      skilling = null;
+      return message('You need a rod and bait to continue fishing.', 'bad');
+    }
+    if (!canAdd(spot.item)) {
+      skilling = null;
+      return message('Your backpack is full.', 'bad');
+    }
+    // EF1: catch rate scales with Fishing level (many misses early), bait used only on a catch
+    const catchChance = Math.min(0.9, 0.52 + (level('Fishing') - spot.level) * 0.025);
+    if (Math.random() < catchChance) {
+      add('bait', -1);
+      add(spot.item);
+      // Advance the intro quest first, so nothing downstream can leave it stuck.
+      if (spot.item === 'rawFish' && player.story.q === 0 && player.story.step === 2) {
+        player.story.step = 3;
+        questUpdate();
+      }
+      player.xp.Fishing += spot.xp;
+      tally('fish');
+      effects.push({
+        x: spot.x,
+        y: spot.y,
+        value: 'CAUGHT',
+        color: '#72b7cb',
+        at: performance.now(),
+        xp: spot.xp,
+      });
+      message(`You catch a ${spot.catchName}.`, 'good');
+      if (window.SFX) SFX.play('fish');
+    } else message('Something tugs the line, then slips away.');
+    if (tickCount >= spot.movesAt) {
+      relocateFishSpot(spot);
+      skilling = null;
+      renderPanel();
+      save();
+      return message('The fish move to a fresh spot nearby.', 'game');
+    }
+    if (invCount('bait') && canAdd(spot.item)) {
+      skilling.next = tickCount + 3;
+      lastActionAt = performance.now();
+      actionDuration = TICK_MS * 3;
+    } else skilling = null;
+    renderPanel();
+    save();
+  } else if (skilling.type === 'fletch') {
+    const recipe = skilling.recipe;
+    skilling = null;
+    if (!invCount('knife')) return message('You no longer have a carving knife.', 'bad');
+    for (const [id, q] of Object.entries(recipe.needs))
+      if (invCount(id) < q) return message('You no longer have the required logs.', 'bad');
+    for (const [id, q] of Object.entries(recipe.needs)) add(id, -q);
+    add(recipe.makes, recipe.qty);
+    player.xp.Fletching += recipe.xp;
+    effects.push({
+      x: player.x,
+      y: player.y,
+      value: 'FLETCHED',
+      color: '#d2b06d',
+      at: performance.now(),
+      xp: recipe.xp,
+    });
+    message(
+      `You create ${recipe.qty > 1 ? recipe.qty + ' ' : ''}${ITEMS[recipe.makes].name}${recipe.qty > 1 ? 's' : ''}.`,
+      'good',
+    );
+    renderPanel();
+    save();
+  } else if (skilling.type === 'hunt') {
+    const spot = skilling.spot;
+    skilling = null;
+    if (!adjacent(player, spot) || !invCount('snare'))
+      return message('You abandon the snare.', 'bad');
+    if (Math.random() < 0.75) {
+      add('rabbitMeat');
+      add('rabbitFur');
+      player.xp.Hunter += spot.xp;
+      effects.push({
+        x: spot.x,
+        y: spot.y,
+        value: 'CAUGHT',
+        color: '#cfb889',
+        at: performance.now(),
+        xp: spot.xp,
+      });
+      message('The snare catches a rabbit. You gather its meat and fur.', 'good');
+    } else {
+      player.xp.Hunter += 5;
+      effects.push({
+        x: spot.x,
+        y: spot.y,
+        value: 'MISSED',
+        color: '#9b8f74',
+        at: performance.now(),
+        xp: 5,
+      });
+      message('The rabbit slips past your snare.', 'bad');
+    }
+    renderPanel();
+    save();
+  } else if (skilling.type === 'willowBlessing') {
+    skilling = null;
+    if (player.gold < 10)
+      return message('You no longer have enough coins for the offering.', 'bad');
+    player.gold -= 10;
+    player.hp = player.maxHp;
+    player.prayerPoints = maxPrayer();
+    effects.push({
+      x: player.x,
+      y: player.y,
+      value: 'BLESSED',
+      color: '#9aca72',
+      at: performance.now(),
+      xp: 0,
+    });
+    message('The woodland blessing restores your Hitpoints and Prayer.', 'good');
+    renderPanel();
+    updateUI();
+    save();
+  } else if (skilling.type === 'roadsideBless') {
+    skilling = null;
+    player.hp = player.maxHp;
+    player.prayerPoints = maxPrayer();
+    player.runEnergy = 100;
+    player.activePrayer = null;
+    player.roadsideBlessAt = Date.now();
+    effects.push({
+      x: player.x,
+      y: player.y,
+      value: 'RESTORED',
+      color: '#d7b06b',
+      at: performance.now(),
+      xp: 0,
+    });
+    message('The Embercross wayfire restores your strength.', 'good');
+    renderPanel();
+    updateUI();
+    save();
+  } else if (skilling.type === 'barrowLever') {
+    skilling = null;
+    player.barrowGateOpen = true;
+    tiles[DUNGEON_GATE.y][DUNGEON_GATE.x] = 5;
+    effects.push({
+      x: DUNGEON_GATE.x,
+      y: DUNGEON_GATE.y,
+      value: 'OPEN',
+      color: '#d5b56a',
+      at: performance.now(),
+      xp: 0,
+    });
+    message('Chains grind in the walls. The eastern portcullis rises.', 'good');
+    save();
+  } else if (skilling.type === 'innRest') {
+    skilling = null;
+    if (player.gold < 5) return message('You no longer have enough coins for the room.', 'bad');
+    player.gold -= 5;
+    player.hp = player.maxHp;
+    player.prayerPoints = maxPrayer();
+    player.runEnergy = 100;
+    player.activePrayer = null;
+    effects.push({
+      x: player.x,
+      y: player.y,
+      value: 'RESTED',
+      color: '#a58bd5',
+      at: performance.now(),
+      xp: 0,
+    });
+    message('You wake fully rested. Hitpoints, Prayer, and run energy restored.', 'good');
+    renderPanel();
+    updateUI();
+    save();
+  } else if (skilling.type === 'homeTeleport') {
+    skilling = null;
+    if (player.barrowRunStartedAt) {
+      player.barrowRunStartedAt = 0;
+      message('Ashen Barrow run abandoned.', 'bad');
+    }
+    player.x = 96;
+    player.y = 128;
+    player.drawX = 96;
+    player.drawY = 128;
+    camera.x = Math.max(0, 96 * TILE - canvas.clientWidth / 2);
+    camera.y = Math.max(0, 128 * TILE - canvas.clientHeight / 2);
+    player.homeTeleportAt = Date.now();
+    effects.push({ x: 96, y: 128, value: 'HOME', color: '#8bcdf0', at: performance.now(), xp: 0 });
+    message('You arrive at the Greenrest Vale plaza.', 'good');
+    checkRegion();
+    save();
+  } else if (skilling.type === 'farmPlant') {
+    const p = skilling.patch;
+    skilling = null;
+    if (!adjacent(player, p) || !invCount('cabbageSeed') || player.farm[p.id])
+      return message('You stop planting.', 'bad');
+    add('cabbageSeed', -1);
+    player.farm[p.id] = { crop: 'cabbage', plantedAt: Date.now(), readyAt: Date.now() + 60000 };
+    player.xp.Farming += 8;
+    effects.push({ x: p.x, y: p.y, value: 'OK', color: '#8bc45a', at: performance.now(), xp: 8 });
+    message('You plant a cabbage seed. It will grow even while you are away.', 'good');
+    renderPanel();
+    save();
+  } else if (skilling.type === 'farmHarvest') {
+    const p = skilling.patch;
+    skilling = null;
+    if (!adjacent(player, p) || !player.farm[p.id] || Date.now() < player.farm[p.id].readyAt)
+      return message('The crop is not ready.', 'bad');
+    if (!canAdd('cabbage')) return message('Your backpack is full.', 'bad');
+    add('cabbage', 3);
+    delete player.farm[p.id];
+    player.xp.Farming += 24;
+    tally('farm');
+    effects.push({ x: p.x, y: p.y, value: 'OK', color: '#9ed561', at: performance.now(), xp: 24 });
+    message('You harvest 3 cabbages.', 'good');
+    renderPanel();
+    save();
+  } else if (skilling.type === 'pickpocket') {
+    const n = skilling.npc;
+    skilling = null;
+    if (!adjacent(player, n)) return message('Your target moved out of reach.', 'bad');
+    n.pickpocketUntil = tickCount + 6;
+    const chance = Math.min(0.92, 0.58 + level('Thieving') * 0.035);
+    if (Math.random() < chance) {
+      const coins = 4 + Math.floor(Math.random() * 9);
+      player.gold += coins;
+      player.xp.Thieving += 18;
+      effects.push({
+        x: n.x,
+        y: n.y,
+        value: 'OK',
+        color: '#d8c55e',
+        at: performance.now(),
+        xp: 18,
+      });
+      message(`You steal ${coins} coins from ${n.name}.`, 'good');
+    } else {
+      const damage = 1;
+      if (!admin) player.hp = Math.max(0, player.hp - damage);
+      effects.push({
+        x: player.x,
+        y: player.y,
+        value: damage,
+        color: '#ef5049',
+        at: performance.now(),
+      });
+      message(` catches you and shoves you away!`, 'bad');
+      if (player.hp <= 0) death();
+    }
+    renderPanel();
+    updateUI();
+  } else if (skilling.type === 'mine') {
+    const r = skilling.rock;
+    if (!adjacent(player, r)) {
+      skilling = null;
+      return;
+    }
+    if (!canAdd(r.ore)) {
+      skilling = null;
+      return message('Your backpack is full.', 'bad');
+    }
+    skilling.next = tickCount + 3;
+    lastActionAt = performance.now();
+    actionDuration = TICK_MS * 3;
+    const bonus = invCount('ironPickaxe') ? 0.15 : 0;
+    if (Math.random() < 0.68 + bonus) {
+      add(r.ore);
+      player.xp.Mining += r.xp;
+      tally('mine');
+      effects.push({
+        x: r.x,
+        y: r.y,
+        value: 'OK',
+        color: '#d5b56a',
+        at: performance.now(),
+        xp: r.xp,
+      });
+      message(`You mine some ${ITEMS[r.ore].name.toLowerCase()}.`, 'good');
+      if (window.SFX) SFX.play('mine');
+      r.mined = (r.mined || 0) + 1;
+      if (r.mined >= 3 || Math.random() < 0.2) {
+        r.depletedUntil = tickCount + 15; // EF1: rock depletes then regenerates
+        skilling = null;
+        message('The rock is depleted.');
+      }
+      renderPanel();
+    } else message('You chip away at the rock.');
+  } else if (skilling.type === 'chop') {
+    const t = skilling.tree;
+    if (t.depletedUntil || !adjacent(player, t)) {
+      skilling = null;
+      return;
+    }
+    if (!canAdd('logs')) {
+      skilling = null;
+      return message('Your backpack is full.', 'bad');
+    }
+    skilling.next = tickCount + 4;
+    lastActionAt = performance.now();
+    actionDuration = TICK_MS * 4;
+    if (Math.random() < 0.76) {
+      add('logs');
+      if (window.SFX) SFX.play('chop');
+      player.xp.Woodcutting += t.xp;
+      tally('chop');
+      t.chops++;
+      effects.push({
+        x: t.x,
+        y: t.y,
+        value: 'OK',
+        color: '#78b85a',
+        at: performance.now(),
+        xp: t.xp,
+      });
+      message('You get some logs.', 'good');
+      if (t.chops >= 3 || Math.random() < 0.22) {
+        t.depletedUntil = tickCount + 15;
+        tiles[t.y][t.x] = 0;
+        skilling = null;
+        message('The tree has been cut down.');
+      }
+      renderPanel();
+    } else message('You swing but fail to get a log.');
+  } else if (skilling.type === 'fire') {
+    const spot = skilling.spot;
+    skilling = null;
+    if (!invCount('logs')) return message('You no longer have any logs.', 'bad');
+    add('logs', -1);
+    fires.push({
+      x: spot.x,
+      y: spot.y,
+      kind: 'fire',
+      name: 'Player-made fire',
+      expires: tickCount + 80,
+    });
+    player.xp.Firemaking += 25;
+    tally('fire');
+    effects.push({
+      x: spot.x,
+      y: spot.y,
+      value: 'OK',
+      color: '#f19a43',
+      at: performance.now(),
+      xp: 25,
+    });
+    message('The logs catch fire.', 'good');
+    renderPanel();
+  } else if (skilling.type === 'herblore') {
+    const recipe = skilling.recipe;
+    skilling = null;
+    for (const [id, q] of Object.entries(recipe.needs)) add(id, -q);
+    add(recipe.makes, recipe.qty);
+    player.xp.Herblore += recipe.xp;
+    tally('pot');
+    effects.push({
+      x: CAULDRON.x,
+      y: CAULDRON.y,
+      value: 'OK',
+      color: '#75c986',
+      at: performance.now(),
+      xp: recipe.xp,
+    });
+    message(`You create ${ITEMS[recipe.makes].name}.`, 'good');
+    renderPanel();
+  } else if (skilling.type === 'craft') {
+    const recipe = skilling.recipe;
+    skilling = null;
+    for (const [id, q] of Object.entries(recipe.needs)) add(id, -q);
+    add(recipe.makes, recipe.qty);
+    player.xp.Crafting += recipe.xp;
+    effects.push({
+      x: WORKBENCH.x,
+      y: WORKBENCH.y,
+      value: 'OK',
+      color: '#c89ab5',
+      at: performance.now(),
+      xp: recipe.xp,
+    });
+    message(`You create ${ITEMS[recipe.makes].name}.`, 'good');
+    renderPanel();
+  } else if (skilling.type === 'smith') {
+    const recipe = skilling.recipe;
+    skilling = null;
+    for (const [id, q] of Object.entries(recipe.needs)) add(id, -q);
+    add(recipe.makes, recipe.qty);
+    player.xp.Smithing += recipe.xp;
+    tally('smith');
+    effects.push({
+      x: FORGE.x,
+      y: FORGE.y,
+      value: 'OK',
+      color: '#e29a55',
+      at: performance.now(),
+      xp: recipe.xp,
+    });
+    message(`You create ${ITEMS[recipe.makes].name}.`, 'good');
+    renderPanel();
+  } else if (skilling.type === 'cook') {
+    const spot = skilling.spot;
+    if (spot && !adjacent(player, spot)) {
+      skilling = null;
+      return message('You move away from the fire.', 'bad');
+    }
+    const raw = rawFoodId();
+    if (!raw) {
+      skilling = null;
+      return message('You finish cooking.', 'good');
+    }
+    const eel = raw === 'rawEel',
+      rabbit = raw === 'rabbitMeat',
+      meat = raw === 'rawMeat',
+      result = eel ? 'marshEel' : rabbit ? 'roastRabbit' : meat ? 'cookedMeat' : 'fish',
+      name = eel ? 'marsh eel' : rabbit ? 'rabbit' : meat ? 'boar meat' : 'riverfish',
+      xp = eel ? 28 : rabbit ? 20 : meat ? 18 : 14;
+    add(raw, -1);
+    if (Math.random() < Math.max(0.03, 0.3 - level('Cooking') * 0.011))
+      message('You accidentally burn the ' + name + '.', 'bad');
+    else {
+      add(result);
+      player.xp.Cooking += xp;
+      tally('cook');
+      if (window.SFX) SFX.play('eat');
+      message('You cook the ' + name + '.', 'good');
+      if (!eel && !rabbit && !meat && player.story.q === 0 && player.story.step === 3) {
+        player.story.step = 4;
+        questUpdate();
+      }
+    }
+    if (rawFoodId()) {
+      skilling.next = tickCount + 2;
+      lastActionAt = performance.now();
+      actionDuration = TICK_MS * 2;
+    } else skilling = null;
+    renderPanel();
+    save();
+  }
+}
+function readBarrowTablet(t) {
+  const first = !player.barrowLore[t.id];
+  if (first) {
+    player.barrowLore[t.id] = true;
+    const found = Object.keys(player.barrowLore).filter((id) =>
+      BARROW_TABLETS.some((t) => t.id === id),
+    ).length;
+    message('Barrow lore discovered: ' + found + '/' + BARROW_TABLETS.length + '.', 'game');
+    if (found === BARROW_TABLETS.length) {
+      player.xp.Prayer += 60;
+      add('ashenShard', 1, true);
+      message('Barrow lore complete! +60 Prayer XP and an Ashen shard.', 'good');
+    }
+    renderPanel();
+    updateUI();
+    save();
+  }
+  showModal(
+    t.name,
+    t.text,
+    first ? [['Record discovery', closeModal]] : [['Read again', closeModal]],
+  );
+}
+function readSign(s) {
+  showModal(s.name, s.text, [['Continue', closeModal]]);
+}
+function homeTeleport() {
+  const remaining = Math.ceil((player.homeTeleportAt + 30000 - Date.now()) / 1000);
+  if (remaining > 0) return message(`Home teleport recharges in ${remaining} seconds.`, 'bad');
+  if (combat) return message('You cannot teleport during combat.', 'bad');
+  closeWorldMap();
+  closeModal();
+  path = [];
+  moveSegment = null;
+  pending = null;
+  skilling = { type: 'homeTeleport', next: tickCount + 5 };
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 5;
+  message('You begin drawing a home teleport circle.', 'game');
+}
+function patchAction(p) {
+  const state = player.farm[p.id];
+  return !state ? 'Plant' : Date.now() >= state.readyAt ? 'Harvest' : 'Inspect';
+}
+function interactPatch(p) {
+  const state = player.farm[p.id];
+  if (!state) {
+    if (!invCount('cabbageSeed'))
+      return message('You need a cabbage seed. Alaric sells them.', 'bad');
+    combat = null;
+    skilling = { type: 'farmPlant', patch: p, next: tickCount + 3 };
+    lastActionAt = performance.now();
+    actionDuration = TICK_MS * 3;
+    return message('You begin planting a cabbage seed.', 'game');
+  }
+  if (Date.now() < state.readyAt)
+    return message(
+      `The cabbages need about ${Math.ceil((state.readyAt - Date.now()) / 1000)} more seconds.`,
+      'game',
+    );
+  if (!canAdd('cabbage')) return message('Your backpack is full.', 'bad');
+  combat = null;
+  skilling = { type: 'farmHarvest', patch: p, next: tickCount + 3 };
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 3;
+  message('You begin harvesting the cabbages.', 'game');
+}
+function openFletching() {
+  if (!invCount('knife')) return message('You need a carving knife.', 'bad');
+  const rows = FLETCH_RECIPES.map((r) => [`${r.name} - level ${r.level}`, () => startFletching(r)]);
+  rows.push(['Close', closeModal]);
+  showModal('Fletching', 'Use your carving knife to turn logs into useful ranged equipment.', rows);
+}
+function startFletching(recipe) {
+  if (level('Fletching') < recipe.level)
+    return message(`You need Fletching level ${recipe.level}.`, 'bad');
+  for (const [id, q] of Object.entries(recipe.needs))
+    if (invCount(id) < q) return message(`You need ${q} ${ITEMS[id].name.toLowerCase()}.`, 'bad');
+  if (!canAdd(recipe.makes)) return message('Your backpack is full.', 'bad');
+  closeModal();
+  combat = null;
+  skilling = { type: 'fletch', recipe, next: tickCount + 4 };
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 4;
+  message(`You begin to ${recipe.name.toLowerCase()}.`, 'game');
+}
+function openForge() {
+  const rows = RECIPES.map((r) => [`${r.name}  -  level ${r.level}`, () => startSmith(r)]);
+  rows.push(['Close', closeModal]);
+  showModal('Frontier Forge', 'Smelting and forging both happen here for this early build.', rows);
+}
+function startSmith(recipe) {
+  if (level('Smithing') < recipe.level)
+    return message(`You need Smithing level ${recipe.level}.`, 'bad');
+  for (const [id, q] of Object.entries(recipe.needs))
+    if (invCount(id) < q) return message(`You need ${q} ${ITEMS[id].name}.`, 'bad');
+  closeModal();
+  combat = null;
+  skilling = { type: 'smith', recipe, next: tickCount + 4 };
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 4;
+  message(`You begin to ${recipe.name.toLowerCase()}.`, 'game');
+}
+function openCrafting() {
+  const rows = CRAFT_RECIPES.map((r) => [`${r.name} - level ${r.level}`, () => startCraft(r)]);
+  rows.push(['Close', closeModal]);
+  showModal('Heartwood Crafting Bench', 'Turn hides and cave silk into wearable armour.', rows);
+}
+function startCraft(recipe) {
+  if (level('Crafting') < recipe.level)
+    return message(`You need Crafting level ${recipe.level}.`, 'bad');
+  for (const [id, q] of Object.entries(recipe.needs))
+    if (invCount(id) < q) return message(`You need ${q} ${ITEMS[id].name}.`, 'bad');
+  if (!canAdd(recipe.makes)) return message('Your backpack is full.', 'bad');
+  closeModal();
+  combat = null;
+  skilling = { type: 'craft', recipe, next: tickCount + 4 };
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 4;
+  message(`You begin to ${recipe.name.toLowerCase()}.`, 'game');
+}
+function openHerblore() {
+  const rows = HERB_RECIPES.map((r) => [`${r.name} - level ${r.level}`, () => startHerblore(r)]);
+  rows.push(['Close', closeModal]);
+  showModal(
+    'Oakridge Brewing Cauldron',
+    'Combine wild herbs with empty vials to brew potions.',
+    rows,
+  );
+}
+function startHerblore(recipe) {
+  if (level('Herblore') < recipe.level)
+    return message(`You need Herblore level ${recipe.level}.`, 'bad');
+  for (const [id, q] of Object.entries(recipe.needs))
+    if (invCount(id) < q) return message(`You need ${q} ${ITEMS[id].name}.`, 'bad');
+  if (!canAdd(recipe.makes)) return message('Your backpack is full.', 'bad');
+  closeModal();
+  combat = null;
+  skilling = { type: 'herblore', recipe, next: tickCount + 3 };
+  lastActionAt = performance.now();
+  actionDuration = TICK_MS * 3;
+  message(`You begin to ${recipe.name.toLowerCase()}.`, 'game');
+}
+function eat(id) {
+  if (!ITEMS[id].heal || !invCount(id)) return;
+  add(id, -1);
+  player.hp = Math.min(player.maxHp, player.hp + ITEMS[id].heal);
+  if (window.SFX) SFX.play('eat');
+  if (ITEMS[id].cure && player.poison) {
+    const cured = Math.min(player.poison, ITEMS[id].cure);
+    player.poison -= cured;
+    if (!player.poison) player.poisonNext = 0;
+    message(
+      `The ${ITEMS[id].name} relieves ${cured} poison dose${cured === 1 ? '' : 's'}.`,
+      'good',
+    );
+  }
+  message(`You ${id.includes('Potion') ? 'drink' : 'eat'} the ${ITEMS[id].name}.`, 'good');
+  renderPanel();
+  updateUI();
+}
+function drinkEnergy(id) {
+  if (!invCount(id)) return;
+  add(id, -1);
+  player.runEnergy = Math.min(100, player.runEnergy + ITEMS[id].energy);
+  message(`You drink the ${ITEMS[id].name}. Run energy restored.`, 'good');
+  renderPanel();
+  updateUI();
+}
+function useItem(id) {
+  const item = ITEMS[id];
+  if (item.energy) return drinkEnergy(id);
+  if (item.heal) return eat(id);
+  if (id === 'knife') return openFletching();
+  if (id === 'logs') return lightFire();
+  if (id === 'bones') return buryBones();
+  if (id === 'antidote') return drinkAntidote();
+  if (id === 'barrowLantern')
+    return message('The Barrow lantern brightens the darkness while you carry it.', 'game');
+  const slot =
+    item.slot ||
+    (item.attack !== undefined || item.ranged !== undefined || item.magic !== undefined
+      ? 'weapon'
+      : item.defence !== undefined
+        ? 'armor'
+        : null);
+  if (slot && invCount(id)) {
+    if (item.req && level(item.reqSkill || 'Attack') < item.req)
+      return message(
+        `You need ${item.reqSkill || 'Attack'} level ${item.req} to use the ${item.name}.`,
+        'bad',
+      );
+    const old = player.equipment[slot];
+    add(id, -1);
+    player.equipment[slot] = id;
+    if (old) add(old);
+    message(`You equip the ${item.name}.`, 'good');
+    renderPanel();
+  }
+}
+function closeItemMenu() {
+  document.getElementById('itemMenu').classList.add('hidden');
+}
+function itemPrimary(id) {
+  const item = ITEMS[id];
+  if (item.energy || id.includes('Potion')) return 'Drink';
+  if (item.heal) return 'Eat';
+  if (id === 'knife') return 'Fletch';
+  if (id === 'logs') return 'Light';
+  if (id === 'bones') return 'Bury';
+  if (id === 'antidote') return 'Drink';
+  if (id === 'barrowLantern') return 'Inspect';
+  if (item.slot === 'armor') return 'Wear';
+  if (item.slot === 'shield') return 'Wield';
+  if (item.attack !== undefined || item.ranged !== undefined || item.magic !== undefined)
+    return 'Wield';
+  return 'Use';
+}
+function dropItem(id, q) {
+  if (['key', 'relic'].includes(id))
+    return message('You should not drop an important quest item.', 'bad');
+  q = Math.min(q, invCount(id));
+  if (!q) return;
+  add(id, -q);
+  spawnDrop(player.x, player.y, id, q);
+  message(`You drop ${q} ${ITEMS[id].name}.`, 'game');
+  closeItemMenu();
+  renderPanel();
+}
+function examineItem(id) {
+  const item = ITEMS[id],
+    parts = [item.name];
+  if (item.heal) parts.push(`heals ${item.heal} Hitpoints`);
+  if (item.attack !== undefined) parts.push(`+${item.attack} Attack`);
+  if (item.ranged !== undefined) parts.push(`+${item.ranged} Ranged`);
+  if (item.magic !== undefined) parts.push(`+${item.magic} Magic`);
+  if (item.defence !== undefined) parts.push(`+${item.defence} Defence`);
+  if (item.value) parts.push(`base value ${item.value} coins`);
+  message(parts.join(' - ') + '.', 'game');
+  closeItemMenu();
+}
+function openItemMenu(e, id) {
+  e.preventDefault();
+  e.stopPropagation();
+  closeContext();
+  const menu = document.getElementById('itemMenu'),
+    item = ITEMS[id],
+    q = invCount(id),
+    primary = itemPrimary(id),
+    droppable = !['key', 'relic'].includes(id),
+    canAlch =
+      droppable && (ITEMS[player.equipment.weapon] || {}).magic && level('Magic') >= 25;
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 220) + 'px';
+  menu.style.top = Math.min(e.clientY, window.innerHeight - (droppable ? 265 : 165)) + 'px';
+  menu.innerHTML = `<div class="menuTitle">${item.name} ${q > 1 ? 'x' + q : ''}</div><button data-a="primary">${primary} ${item.name}</button>${canAlch ? `<button data-a="alch">High Alchemy</button>` : ''}${droppable ? `<button data-a="drop1" class="danger">Drop one</button>${q > 1 ? '<button data-a="dropall" class="danger">Drop all</button>' : ''}` : ''}<button data-a="examine">Examine ${item.name}</button><button data-a="cancel" class="cancel">Cancel</button>`;
+  menu.classList.remove('hidden');
+  menu.querySelector('[data-a="primary"]').onclick = () => {
+    closeItemMenu();
+    useItem(id);
+  };
+  const alchBtn = menu.querySelector('[data-a="alch"]');
+  if (alchBtn) alchBtn.onclick = () => highAlchemy(id);
+  const one = menu.querySelector('[data-a="drop1"]');
+  if (one) one.onclick = () => dropItem(id, 1);
+  const all = menu.querySelector('[data-a="dropall"]');
+  if (all) all.onclick = () => dropItem(id, q);
+  menu.querySelector('[data-a="examine"]').onclick = () => examineItem(id);
+  menu.querySelector('[data-a="cancel"]').onclick = closeItemMenu;
+}
+function unequip(slot) {
+  const id = player.equipment[slot];
+  if (!id) return;
+  if (!canAdd(id)) return message('Your backpack is full.', 'bad');
+  add(id);
+  player.equipment[slot] = null;
+  message(`You remove the ${ITEMS[id].name}.`);
+  renderPanel();
+}
+function setCombatStyle(style) {
+  player.combatStyle = style;
+  message(`Combat style: ${style}.`, 'game');
+  renderPanel();
+}
+function selectSpell(id) {
+  const sp = SPELLS[id];
+  if (!sp) return;
+  if (level('Magic') < sp.level) return message(`You need Magic level ${sp.level}.`, 'bad');
+  player.selectedSpell = id;
+  message(`Spell selected: ${sp.name}.`, 'game');
+  renderPanel();
+}
+function highAlchemy(id) {
+  if (!(ITEMS[player.equipment.weapon] || {}).magic)
+    return message('You must wield a magic staff to alchemise.', 'bad');
+  if (level('Magic') < 25) return message('You need Magic level 25 for High Alchemy.', 'bad');
+  if (invCount('emberRune') < 3) return message('High Alchemy needs 3 Ember runes.', 'bad');
+  if (!invCount(id)) return;
+  if (['key', 'relic'].includes(id)) return message('You cannot alchemise a quest item.', 'bad');
+  add('emberRune', -3);
+  add(id, -1);
+  const coins = Math.max(1, Math.round((ITEMS[id].value || 1) * 1.3));
+  player.gold += coins;
+  player.xp.Magic += 40;
+  if (window.SFX) SFX.play('coins');
+  message(`High Alchemy: ${ITEMS[id].name} → ${coins} coins.`, 'good');
+  renderPanel();
+  updateUI();
+  closeItemMenu();
+}
+function regionName() {
+  return regionNameFor(player.x, player.y);
+}
+function checkRegion() {
+  const name = regionName();
+  if (name === lastRegion) return;
+  lastRegion = name;
+  const banner = document.getElementById('regionBanner'),
+    isNew = DISCOVERY_REGIONS.includes(name) && !player.discoveredRegions[name];
+  if (isNew) {
+    player.discoveredRegions[name] = true;
+    banner.textContent = `NEW AREA · ${name.toUpperCase()}`;
+    message(`New area discovered: ${name}!`, 'good');
+    const found = DISCOVERY_REGIONS.filter((r) => player.discoveredRegions[r]).length;
+    if (found === DISCOVERY_REGIONS.length && !player.explorerRewarded) {
+      player.explorerRewarded = true;
+      player.gold += 250;
+      add('explorerCape', 1, true);
+      message('World explored! You receive 250 coins and the Emberfall explorer cape.', 'good');
+    }
+    save();
+    renderPanel();
+    updateUI();
+  } else {
+    banner.textContent = name.toUpperCase();
+    message(`You enter ${name}.`, 'game');
+  }
+  banner.classList.add('show');
+  setTimeout(() => banner.classList.remove('show'), 1800);
+}
+// ---- OSRS-style skill guide: level unlocks per skill ----
+const SKILL_GUIDE = {
+  Attack: {
+    about:
+      'Improves melee accuracy and unlocks stronger blades. Train it using the Accurate combat style.',
+    tiers: [
+      [1, 'Wield the bronze sword'],
+      [1, 'Earn the Oakridge blade from "A Guide to Heartwood"'],
+      [8, 'Forge and wield the iron longsword (via Smithing)'],
+    ],
+  },
+  Strength: {
+    about: 'Increases melee damage. Train it using the Aggressive combat style.',
+    tiers: [
+      [1, 'Higher levels hit harder with any melee weapon'],
+      [1, 'Burst of Strength prayer adds even more damage'],
+    ],
+  },
+  Defence: {
+    about: 'Reduces incoming damage and unlocks armour. Train it using the Defensive combat style.',
+    tiers: [
+      [1, 'Bronze shield and leather body'],
+      [3, 'Rabbit-fur gloves and Embercross buckler'],
+      [4, 'Iron platebody and Willowmere mantle'],
+      [6, 'Warden cloak from the Ashen Barrow'],
+    ],
+  },
+  Hitpoints: {
+    about: 'Your health pool. It rises automatically as you deal damage in combat.',
+    tiers: [
+      [1, 'Begin with 10 hitpoints'],
+      [1, 'Every point of damage you deal trains Hitpoints'],
+    ],
+  },
+  Ranged: {
+    about: 'Accuracy and damage with bows. Train it with a shortbow and bronze arrows.',
+    tiers: [[1, 'Wield the shortbow with bronze arrows']],
+  },
+  Magic: {
+    about: 'Cast combat spells with a staff and runes. Train it by casting spells in battle.',
+    tiers: [
+      [1, 'Ember staff + Ember runes cast Ember Strike'],
+      [1, 'Keep Ember runes stocked to keep casting'],
+    ],
+  },
+  Prayer: {
+    about:
+      'Bury bones for XP, then spend prayer points on combat boosts. Recharge at the Heartwood Castle altar.',
+    tiers: [
+      [1, 'Burst of Strength — more melee damage'],
+      [3, 'Thick Skin — better melee defence'],
+    ],
+  },
+  Fishing: {
+    about:
+      'Fish the ripples off the docks. You need a fishing rod and bait — buy both from Fisher Murphy.',
+    tiers: [
+      [1, 'Catch riverfish at the Heartwood docks'],
+      [3, 'Catch marsh eel in the marshes'],
+    ],
+  },
+  Cooking: {
+    about: 'Cook raw food on a fire or range. Higher levels burn food far less often.',
+    tiers: [
+      [1, 'Cook riverfish, boar meat and rabbit'],
+      [1, 'Cook marsh eel to cure poison'],
+    ],
+  },
+  Woodcutting: {
+    about: 'Chop trees for logs with a hatchet (buy from Alaric). Trees deplete, then regrow.',
+    tiers: [[1, 'Chop Heartwood trees for logs']],
+  },
+  Firemaking: {
+    about: 'Light logs with a tinderbox to make a fire you can cook on.',
+    tiers: [[1, 'Light logs anywhere for a cooking fire']],
+  },
+  Mining: {
+    about:
+      'Mine rocks for ore with a pickaxe (buy from Torren). Rocks deplete and regenerate; an iron pickaxe is faster.',
+    tiers: [
+      [1, 'Mine copper ore'],
+      [5, 'Mine iron ore'],
+    ],
+  },
+  Smithing: {
+    about: 'Smelt ore into bars and forge gear at the forge.',
+    tiers: [
+      [1, 'Smelt bronze bars (2 copper)'],
+      [5, 'Smelt iron bars (2 iron)'],
+      [8, 'Forge the iron longsword (3 iron bars)'],
+      [12, 'Forge the iron platebody (5 iron bars)'],
+    ],
+  },
+  Farming: {
+    about: 'Plant seeds at the Heartwood farm patch, then return to harvest the crop.',
+    tiers: [[1, 'Plant cabbage seeds and harvest cabbages']],
+  },
+  Herblore: {
+    about: 'Brew potions from herbs, moss and empty vials.',
+    tiers: [
+      [1, 'Minor healing potion (herb + vial)'],
+      [2, 'Marsh antidote (2 bog moss + vial)'],
+      [3, 'Run energy potion (2 herb + vial)'],
+    ],
+  },
+  Crafting: {
+    about: 'Turn hides, fur and silk into wearable armour.',
+    tiers: [
+      [1, 'Leather body (3 goblin hide)'],
+      [3, 'Rabbit-fur gloves (3 fur)'],
+      [5, 'Cave-silk robe (3 spider silk)'],
+    ],
+  },
+  Fletching: {
+    about: 'Carve logs into bows and arrow shafts with a carving knife.',
+    tiers: [
+      [1, 'Basic fletching from logs'],
+      [4, 'Advanced fletching recipes'],
+    ],
+  },
+  Slayer: {
+    about: 'Earned by taking monster contracts from Guard Bren and slaying the assigned foes.',
+    tiers: [[1, 'Accept monster contracts for Slayer XP and rewards']],
+  },
+  Hunter: {
+    about: 'Trap small game such as rabbits using wooden snares.',
+    tiers: [[1, 'Set snares at the rabbit burrows']],
+  },
+  Thieving: {
+    about: 'A roguish skill trained around Emberfall settlements as you explore.',
+    tiers: [[1, 'Opportunities appear as the world opens up']],
+  },
+};
+function showSkillGuide(skill) {
+  const g = SKILL_GUIDE[skill],
+    lv = level(skill),
+    tiers = g
+      ? g.tiers
+          .map(
+            ([req, text]) =>
+              `<div class="guideRow ${lv >= req ? 'unlocked' : 'locked'}"><span class="guideLv">Lv ${req}</span><span>${text}</span></div>`,
+          )
+          .join('')
+      : '<p class="hint">Keep training to discover what this skill unlocks.</p>';
+  modalBody.innerHTML =
+    `<h2>${skill} Guide</h2><p class="hint">Level ${lv} · ${player.xp[skill]} XP</p>` +
+    (g ? `<p class="guideAbout">${g.about}</p>` : '') +
+    tiers +
+    `<div class="bankActions"><button class="choice" data-act="close">Close</button></div>`;
+  modal.classList.remove('hidden');
+  modalBody.querySelector('[data-act="close"]').onclick = closeModal;
+}
+// ---------------- Admin / god mode ----------------
+function setAdmin(on) {
+  admin = on;
+  try {
+    localStorage.setItem('emberfall-ef1-admin', on ? '1' : '0');
+  } catch (e) {}
+  if (on) {
+    player.runEnabled = true;
+    player.runEnergy = 100;
+    player.hp = player.maxHp;
+    player.poison = 0;
+  }
+  message(
+    on
+      ? 'ADMIN MODE ON — invincible, always running, item spawner unlocked.'
+      : 'Admin mode off — standard play resumed.',
+    on ? 'good' : 'game',
+  );
+  const b = document.getElementById('adminBtn');
+  if (b) b.classList.toggle('on', on);
+  updateUI();
+  renderPanel();
+}
+function loginAdmin() {
+  const code = prompt('Enter admin passcode:');
+  if (code === null) return;
+  if (code !== ADMIN_CODE) return message('Incorrect admin passcode.', 'bad');
+  setAdmin(true);
+  adminMenu();
+}
+function adminMenu() {
+  showModal('Admin Panel', 'God mode active: invincible, always running.', [
+    ['Spawn items', adminSpawnMenu],
+    [
+      'Add 1000 coins',
+      () => {
+        player.gold += 1000;
+        updateUI();
+        message('Spawned 1000 coins.', 'good');
+        save();
+      },
+    ],
+    [
+      'Heal to full',
+      () => {
+        player.hp = player.maxHp;
+        player.poison = 0;
+        updateUI();
+        message('Fully healed.', 'good');
+      },
+    ],
+    [
+      'Set all skills to level 99',
+      () => {
+        for (const k in player.xp) player.xp[k] = xpForLevel(99);
+        player.maxHp = 99;
+        player.hp = 99;
+        renderPanel();
+        updateUI();
+        save();
+        message('All skills set to level 99.', 'good');
+      },
+    ],
+    ['Disable admin mode', () => setAdmin(false)],
+    ['Close', closeModal],
+  ]);
+}
+function adminSpawnMenu() {
+  const ids = Object.keys(ITEMS).filter((id) => id !== 'coins');
+  modalBody.innerHTML =
+    `<h2>Spawn Items</h2><p class="hint">Click an item to add it. Stackables add 100, gear adds 1.</p>` +
+    `<div class="bankGrid">` +
+    ids
+      .map(
+        (id) =>
+          `<div class="slot bankslot" data-spawn="${id}" title="${ITEMS[id].name}"><img class="ic" src="assets/items/${id}.png" alt="" draggable="false"></div>`,
+      )
+      .join('') +
+    `</div><div class="bankActions"><button class="choice" data-act="back">Back</button><button class="choice" data-act="close">Close</button></div>`;
+  modal.classList.remove('hidden');
+  modalBody.querySelectorAll('[data-spawn]').forEach(
+    (s) =>
+      (s.onclick = () => {
+        const id = s.dataset.spawn,
+          qty = ITEMS[id].stack ? 100 : 1;
+        add(id, qty, true);
+        message(`Spawned ${qty}× ${ITEMS[id].name}.`, 'good');
+        renderPanel();
+      }),
+  );
+  modalBody.querySelector('[data-act="back"]').onclick = adminMenu;
+  modalBody.querySelector('[data-act="close"]').onclick = closeModal;
+}
+function showModal(title, text, choices) {
+  modalBody.innerHTML =
+    `<h2>${title}</h2><p>${text}</p>` +
+    choices
+      .map((c, i) => `<button class="choice ${c[2] || ''}" data-i="${i}">${c[0]}</button>`)
+      .join('');
+  modal.classList.remove('hidden');
+  modalBody.querySelectorAll('button').forEach((b) => (b.onclick = choices[+b.dataset.i][1]));
+}
+function closeModal() {
+  modal.classList.add('hidden');
+}
+function renderPanel() {
+  const p = document.getElementById('panel');
+  if (activeTab === 'inventory') {
+    let slots = Object.entries(player.inv)
+      .map(
+        ([id, q]) =>
+          `<div class="slot" data-item="${id}" title="${ITEMS[id].name} | value ${ITEMS[id].value || 0} coins"><img class="ic" src="assets/items/${id}.png" alt="" draggable="false"><span>${q}</span></div>`,
+      )
+      .join('');
+    p.innerHTML = `<div class="title">BACKPACK ${Object.keys(player.inv).length}/${INVENTORY_SLOTS}</div><div class="grid">${slots}${'<div class="slot"></div>'.repeat(Math.max(0, INVENTORY_SLOTS - Object.keys(player.inv).length))}</div><p class="hint">Click food to eat, gear to equip, or logs to light a fire.</p>`;
+    p.querySelectorAll('[data-item]').forEach((s) => {
+      s.onclick = () => {
+        closeItemMenu();
+        useItem(s.dataset.item);
+      };
+      s.oncontextmenu = (e) => openItemMenu(e, s.dataset.item);
+    });
+  } else if (activeTab === 'skills') {
+    p.innerHTML =
+      '<div class="title">SKILLS</div><p class="hint">Click any skill to open its guide.</p>' +
+      Object.keys(player.xp)
+        .map((k) => {
+          const lv = level(k),
+            floor = xpForLevel(lv),
+            ceil = xpForLevel(lv + 1),
+            pct =
+              lv >= 99
+                ? 100
+                : Math.max(0, Math.min(100, ((player.xp[k] - floor) / (ceil - floor)) * 100));
+          return `<div class="skillRow" data-skill="${k}" title="Open the ${k} guide"><div><span>${k}</span><b>Level ${lv}</b></div><div class="xpTrack"><i style="width:${pct}%"></i></div><small>${player.xp[k]} XP</small></div>`;
+        })
+        .join('');
+    p.querySelectorAll('[data-skill]').forEach(
+      (r) => (r.onclick = () => showSkillGuide(r.dataset.skill)),
+    );
+  } else if (activeTab === 'gear') {
+    const w = player.equipment.weapon,
+      a = player.equipment.armor,
+      sh = player.equipment.shield,
+      g = player.equipment.gloves,
+      weapon = w ? ITEMS[w] : {},
+      isRanged = !!weapon.ranged,
+      isMagic = !!weapon.magic,
+      str = isMagic
+        ? level('Magic')
+        : isRanged
+          ? level('Ranged')
+          : level('Strength') +
+            (player.combatStyle === 'aggressive' ? 3 : 0) +
+            (player.activePrayer === 'strength' ? 2 : player.activePrayer === 'might' ? 5 : 0),
+      max =
+        (isMagic ? 2 : 1) +
+        Math.floor(str / 3) +
+        (isMagic ? weapon.magic || 0 : isRanged ? weapon.ranged || 0 : weapon.attack || 0);
+    p.innerHTML = `<div class="title">EQUIPMENT</div><div class="grid"><div class="slot" data-equip="weapon" title="Remove weapon">${w ? '<img class="ic" src="assets/items/' + w + '.png" alt="">' : '-'}</div><div class="slot" data-equip="armor" title="Remove armour">${a ? '<img class="ic" src="assets/items/' + a + '.png" alt="">' : '-'}</div><div class="slot" data-equip="shield" title="Remove shield">${sh ? '<img class="ic" src="assets/items/' + sh + '.png" alt="">' : '-'}</div><div class="slot" data-equip="gloves" title="Remove gloves">${g ? '<img class="ic" src="assets/items/' + g + '.png" alt="">' : '-'}</div></div><div class="row"><span>Weapon</span><b>${w ? ITEMS[w].name : 'Unarmed'}</b></div><div class="row"><span>Armour</span><b>${a ? ITEMS[a].name : 'None'}</b></div><div class="row"><span>Shield</span><b>${sh ? ITEMS[sh].name : 'None'}</b></div><div class="row"><span>Gloves</span><b>${g ? ITEMS[g].name : 'None'}</b></div><div class="row"><span>${isMagic ? 'Magic' : isRanged ? 'Ranged' : 'Attack'} bonus</span><b>+${isMagic ? weapon.magic || 0 : isRanged ? weapon.ranged || 0 : weapon.attack || 0}</b></div><div class="row"><span>Defence bonus</span><b>+${(a ? ITEMS[a].defence || 0 : 0) + (sh ? ITEMS[sh].defence || 0 : 0) + (g ? ITEMS[g].defence || 0 : 0)}</b></div><div class="row"><span>Max hit</span><b>${max}</b></div><div class="row"><span>Attack speed</span><b>${weapon.speed || 4} ticks</b></div>${weapon.spec ? `<div class="row"><span>Special</span><b>${weapon.spec === 'power' ? 'Crushing blow (+60% dmg, 50%)' : 'Flurry — double hit (50%)'}</b></div>` : ''}${isMagic ? `<div class="title combatTitle">SPELLBOOK</div>${Object.entries(SPELLS).map(([id, sp]) => `<button class="choice ${player.selectedSpell === id ? 'selected' : ''}" data-spell="${id}" ${level('Magic') < sp.level ? 'disabled' : ''}><b>${sp.name}</b> - Magic ${sp.level}, ${sp.runes} rune${sp.runes === 1 ? '' : 's'}${sp.bind ? ', binds target' : sp.dmgBonus ? ', +' + sp.dmgBonus + ' max hit' : ''}</button>`).join('')}<div class="row"><span>Runes</span><b>${invCount('emberRune')} Ember</b></div><p class="hint">Attacks from up to ${weapon.range} tiles away.</p>` : isRanged ? `<div class="row"><span>Ammunition</span><b>${invCount('arrows')} arrows</b></div><p class="hint">The bow attacks from up to ${weapon.range} tiles away.</p>` : `<div class="title combatTitle">COMBAT STYLE</div>${['accurate', 'aggressive', 'defensive'].map((s) => `<button class="choice ${player.combatStyle === s ? 'selected' : ''}" data-style="${s}">${s[0].toUpperCase() + s.slice(1)} - train ${s === 'accurate' ? 'Attack' : s === 'aggressive' ? 'Strength' : 'Defence'}</button>`).join('')}`}`;
+    p.querySelectorAll('[data-equip]').forEach((e) => (e.onclick = () => unequip(e.dataset.equip)));
+    p.querySelectorAll('[data-style]').forEach(
+      (b) => (b.onclick = () => setCombatStyle(b.dataset.style)),
+    );
+    p.querySelectorAll('[data-spell]').forEach(
+      (b) => (b.onclick = () => selectSpell(b.dataset.spell)),
+    );
+  } else if (activeTab === 'prayer') {
+    p.innerHTML =
+      `<div class="title">PRAYER ${player.prayerPoints}/${maxPrayer()}</div><p class="hint">Only one prayer is active at a time. Bury bones to train Prayer; recharge at the Frostmere altar.</p>` +
+      Object.entries(PRAYERS)
+        .map(
+          ([id, pr]) =>
+            `<button class="choice ${player.activePrayer === id ? 'selected' : ''}" data-prayer="${id}" ${level('Prayer') < pr.level ? 'disabled' : ''}><b>${pr.name}</b> - level ${pr.level}<br><small>${pr.desc}</small></button>`,
+        )
+        .join('');
+    p.querySelectorAll('[data-prayer]').forEach(
+      (b) => (b.onclick = () => togglePrayer(b.dataset.prayer)),
+    );
+  } else {
+    p.innerHTML = journalHTML();
+    p.querySelectorAll('[data-jtab]').forEach(
+      (b) =>
+        (b.onclick = () => {
+          journalTab = b.dataset.jtab;
+          renderPanel();
+        }),
+    );
+  }
+}
+// Convert bracketed status tokens into coloured badges.
+function badgeify(html) {
+  return html.replace(
+    /\[(ACTIVE|DONE|AVAILABLE|LOCKED|COMPLETE|READY)\]/g,
+    (m, s) => `<span class="qbadge ${s.toLowerCase()}">${s}</span>`,
+  );
+}
+function journalHTML() {
+  const tabs = [
+    ['quests', 'Quests'],
+    ['bestiary', 'Bestiary'],
+    ['collection', 'Collection'],
+    ['discovery', 'Discovery'],
+  ];
+  const pills = `<div class="jtabs">${tabs
+    .map(
+      ([id, label]) =>
+        `<button class="jtab ${journalTab === id ? 'on' : ''}" data-jtab="${id}">${label}</button>`,
+    )
+    .join('')}</div>`;
+  let body;
+  if (journalTab === 'bestiary') body = bestiaryHTML();
+  else if (journalTab === 'collection') body = barrowLoreHTML();
+  else if (journalTab === 'discovery') body = discoveryHTML();
+  else body = questsTabHTML();
+  return pills + `<div class="jbody">${body}</div>`;
+}
+function questsTabHTML() {
+  const s = player.story;
+  const story = QUESTS.map((q, qi) => {
+    const st = qi < s.q ? 'DONE' : qi === s.q ? 'ACTIVE' : 'LOCKED';
+    return `<div class="qcard ${st.toLowerCase()}"><div class="qhead"><b>${q.name}</b><span class="qbadge ${st.toLowerCase()}">${st}</span></div>${q.steps
+      .map(
+        (step, i) =>
+          `<div class="questStep ${qi < s.q || (qi === s.q && i < s.step) ? 'done' : qi === s.q && i === s.step ? 'current' : ''}">${i + 1}. ${step}</div>`,
+      )
+      .join('')}<p class="reward"><b>Reward:</b> ${q.reward}</p></div>`;
+  }).join('');
+  const contract = player.contract
+    ? `<div class="qcard ${player.contract.remaining === 0 ? 'ready' : 'active'}"><div class="qhead"><b>Monster Contract</b><span class="qbadge ${player.contract.remaining === 0 ? 'ready' : 'active'}">${player.contract.remaining === 0 ? 'READY' : 'ACTIVE'}</span></div><div class="questStep current">${player.contract.remaining === 0 ? 'Return to Guard Bren.' : `${player.contract.remaining} of ${player.contract.total} ${player.contract.name}s remaining.`}</div></div>`
+    : '';
+  const side = [
+    sideQuestHTML(),
+    silkQuestHTML(),
+    brokenRoadHTML(),
+    hearthQuestHTML(),
+    mireQuestHTML(),
+  ]
+    .map((h) => `<div class="qcard">${badgeify(h)}</div>`)
+    .join('');
+  return (
+    `<div class="jsection">Story</div>${story}${contract}` +
+    `<div class="jsection">Side quests</div>${side}` +
+    `<div class="jsection">Training</div>${badgeify(starterQuestHTML())}`
+  );
+}
+function starterQuestHTML() {
+  const done = STARTER_QUESTS.filter((q) => player.starterClaimed[q.id]).length;
+  return (
+    `<div class="title">TRAINING QUESTS ${done}/${STARTER_QUESTS.length}</div>` +
+    `<p class="hint">Short quests that teach each skill group. Rewards are paid the moment you finish the objectives.</p>` +
+    STARTER_QUESTS.map((q) => {
+      const complete = player.starterClaimed[q.id],
+        status = complete ? '[DONE]' : starterDone(q) ? '[COMPLETE]' : '[ACTIVE]',
+        rewardXp = Object.entries(q.reward.xp)
+          .map(([sk, amt]) => `${amt} ${sk}`)
+          .join(', ');
+      return (
+        `<div class="starterQuest ${complete ? 'done' : ''}"><div class="title">${status} ${q.name}</div>` +
+        `<div class="qGroup">${q.group}</div><p class="hint">${q.blurb}</p>` +
+        q.objectives
+          .map((o) => {
+            const prog = starterProgress(o);
+            return `<div class="questStep ${prog >= o.goal ? 'done' : 'current'}">${o.label}: ${prog}/${o.goal}</div>`;
+          })
+          .join('') +
+        `<p class="reward"><b>Reward:</b> ${q.reward.gold} coins, ${rewardXp} XP</p></div>`
+      );
+    }).join('')
+  );
+}
+function sideQuestHTML() {
+  const q = player.sideQuests.boarHunt,
+    status = q.step === 0 ? '[AVAILABLE]' : q.step === 1 ? '[ACTIVE]' : '[DONE]';
+  return `<div class="title">${status} The Boar Hunt</div><div class="questStep ${q.step === 2 ? 'done' : q.step === 1 ? 'current' : ''}">${q.step === 0 ? 'Speak with Elder Willow in Willowmere.' : q.step === 1 ? `Defeat wild boars: ${q.kills}/3` : 'Willowmere eastern hedge is safe.'}</div><p><b>Reward:</b> Willowmere mantle, 150 coins, Slayer and Cooking XP</p>`;
+}
+function silkQuestHTML() {
+  const q = player.sideQuests.silkAndCinders,
+    available = player.story.q >= 2,
+    status =
+      q.step === 0
+        ? available
+          ? '[AVAILABLE]'
+          : '[LOCKED]'
+        : q.step === 1
+          ? '[ACTIVE]'
+          : '[DONE]';
+  return `<div class="title">${status} Silk and Cinders</div><div class="questStep ${q.step === 2 ? 'done' : q.step === 1 ? 'current' : ''}">${q.step === 0 ? (available ? 'Speak with Scout Vale on the Eastern Frontier.' : 'Progress the Oakridge story to reach the frontier.') : q.step === 1 ? `Defeat cave spiders: ${q.kills}/4` : 'The lower Barrow route is secure.'}</div><p><b>Reward:</b> Cave-silk robe, 180 coins, 20 Ember runes, Magic and Slayer XP</p>`;
+}
+function brokenRoadHTML() {
+  const q = player.sideQuests.brokenRoad,
+    available = player.story.q >= 1,
+    status =
+      q.step === 0
+        ? available
+          ? '[AVAILABLE]'
+          : '[LOCKED]'
+        : q.step === 1
+          ? '[ACTIVE]'
+          : '[DONE]';
+  return `<div class="title">${status} The Broken Road</div><div class="questStep ${q.step === 2 ? 'done' : q.step === 1 ? 'current' : ''}">${q.step === 0 ? (available ? 'Speak with Mara in Embercross.' : 'Complete the Heartwood guide quest first.') : q.step === 1 ? `Defeat road bandits: ${q.kills}/4` : 'Embercross supply carts travel safely.'}</div><p><b>Reward:</b> Embercross buckler, 160 coins, Defence and Slayer XP</p>`;
+}
+function hearthQuestHTML() {
+  const q = player.sideQuests.hearthAndHome,
+    available = player.story.q >= 1,
+    status =
+      q.step === 0
+        ? available
+          ? '[AVAILABLE]'
+          : '[LOCKED]'
+        : q.step === 1
+          ? '[ACTIVE]'
+          : '[DONE]',
+    have = invCount('rawMeat') && invCount('cabbage') && invCount('herb');
+  return `<div class="title">${status} Hearth and Home</div><div class="questStep ${q.step === 2 ? 'done' : q.step === 1 ? 'current' : ''}">${q.step === 0 ? (available ? 'Speak with Tamsin at the Resting Stag in Oakridge.' : 'Help Captain Rowan secure Oakridge first.') : q.step === 1 ? `Gather feast ingredients: boar meat ${Math.min(1, invCount('rawMeat'))}/1, cabbage ${Math.min(1, invCount('cabbage'))}/1, wild herb ${Math.min(1, invCount('herb'))}/1${have ? ' — return to Tamsin.' : ''}` : 'Oakridge celebrated beneath a warm and crowded roof.'}</div><p><b>Reward:</b> 120 coins, 3 Oakridge stews, Cooking and Farming XP</p>`;
+}
+function mireQuestHTML() {
+  const q = player.sideQuests.cureMirehaven,
+    available = player.story.q >= 1,
+    status =
+      q.step === 0
+        ? available
+          ? '[AVAILABLE]'
+          : '[LOCKED]'
+        : q.step === 1
+          ? '[ACTIVE]'
+          : '[DONE]';
+  return `<div class="title">${status} A Cure for Mirehaven</div><div class="questStep ${q.step === 2 ? 'done' : q.step === 1 ? 'current' : ''}">${q.step === 0 ? (available ? 'Speak with Healer Sable in Mirehaven.' : 'Help Heartwood before travelling southwest.') : q.step === 1 ? `Gather Bog moss from Boglings: ${Math.min(4, invCount('bogMoss'))}/4${invCount('bogMoss') >= 4 ? ' — return to Sable.' : ''}` : 'Mirehaven is free of marsh fever.'}</div><p><b>Reward:</b> Mirehaven charm, 2 antidotes, 160 coins, Herblore and Defence XP</p>`;
+}
+function discoveryHTML() {
+  const found = DISCOVERY_REGIONS.filter((r) => player.discoveredRegions[r]).length;
+  return `<div class="title">WORLD DISCOVERY ${found}/${DISCOVERY_REGIONS.length}</div><div class="discoveryList">${DISCOVERY_REGIONS.map((r) => `<div class="${player.discoveredRegions[r] ? 'found' : ''}"><span>${player.discoveredRegions[r] ? '◆' : '◇'}</span>${player.discoveredRegions[r] ? r : 'Undiscovered region'}</div>`).join('')}</div><p class="hint">${player.explorerRewarded ? 'All major regions explored. The explorer cape is yours.' : 'Discover all major regions to earn 250 coins and the Emberfall explorer cape.'}</p>`;
+}
+function barrowLoreHTML() {
+  const found = BARROW_TABLETS.filter((t) => player.barrowLore[t.id]).length;
+  return (
+    `<div class="title">ASHEN BARROW</div><div class="bestiaryRow known"><div><b>Dungeon clears</b><span>${player.barrowRuns} reward chest${player.barrowRuns === 1 ? '' : 's'} claimed</span></div><small>${barrowChestReady() ? 'Chest ready to claim' : 'Defeat the Warden to unlock the chest'}</small></div><div class="row"><span>Personal best</span><b>${player.barrowBestMs ? formatRunTime(player.barrowBestMs) : 'Not set'}</b></div><div class="row"><span>Last clear</span><b>${player.barrowLastMs ? formatRunTime(player.barrowLastMs) : 'Not set'}</b></div><div class="row"><span>Best reward potential</span><b>${player.barrowBestPotential || 0}%</b></div><p class="hint">Skeletons add 15%, cave spiders 12%, and ash bats 10% reward potential per run.</p><div class="title">BARROW COLLECTION ${Object.values(player.collection.barrow).filter(Boolean).length}/3</div><div class="grid collectionGrid">${[
+      ['cloak', 'wardenCloak'],
+      ['guard', 'ashenGuard'],
+      ['lantern', 'barrowLantern'],
+    ]
+      .map(
+        ([key, id]) =>
+          `<div class="slot ${player.collection.barrow[key] ? 'found' : 'locked'}" title="${player.collection.barrow[key] ? ITEMS[id].name : 'Undiscovered Barrow unique'}">${player.collection.barrow[key] ? '<img class="ic" src="assets/items/' + id + '.png" alt="">' : '?'}</div>`,
+      )
+      .join(
+        '',
+      )}</div><p class="hint">The Barrow lantern brightens the dungeon while carried. Higher reward potential improves unique chances.</p><div class="title">BARROW LORE ${found}/${BARROW_TABLETS.length}</div><p class="hint">${found === BARROW_TABLETS.length ? 'All three Ashen Barrow inscriptions have been recorded.' : 'Search the dungeon chambers for ancient stone tablets.'}</p>` +
+    BARROW_TABLETS.map(
+      (t) =>
+        `<div class="questStep ${player.barrowLore[t.id] ? 'done' : ''}">${player.barrowLore[t.id] ? t.name : 'Undiscovered inscription'}</div>`,
+    ).join('')
+  );
+}
+function bestiaryHTML() {
+  const order = [
+    'rat',
+    'goblin',
+    'wolf',
+    'boar',
+    'bandit',
+    'bogling',
+    'direWolf',
+    'frostTroll',
+    'cinderFiend',
+    'goblinWarlord',
+    'guardian',
+    'skeleton',
+    'bat',
+    'spider',
+    'warden',
+    'cinderColossus',
+  ];
+  return (
+    `<div class="title bestiaryTitle">BESTIARY</div><p class="hint">Your recorded monster defeats and known spoils.</p>` +
+    order
+      .map((id) => {
+        const m = MONSTER_TYPES[id],
+          kills = player.killLog[id] || 0,
+          drops =
+            [...new Set(m.drops.map((d) => ITEMS[d[0]].name))].join(', ') +
+            (id === 'warden' ? ', Warden cloak, Ashen guard, Barrow lantern (chest)' : '');
+        return `<div class="bestiaryRow ${kills ? 'known' : ''}"><div><b>${m.name}</b><span>${kills} defeated</span></div><small>${kills ? drops : 'Undiscovered'}</small></div>`;
+      })
+      .join('')
+  );
+}
+function updateUI() {
+  renderTutorial();
+  const poisonStatus = document.getElementById('statusEffect');
+  if (poisonStatus) {
+    poisonStatus.textContent = player.poison
+      ? `☠ POISONED · ${player.poison} dose${player.poison === 1 ? '' : 's'} remaining`
+      : '';
+    poisonStatus.classList.toggle('hidden', !player.poison);
+  }
+  document.getElementById('status').innerHTML =
+    `<div class="orb hp">&#9829; ${player.hp}/${player.maxHp}</div><div class="orb gp">&#9679; ${player.gold}</div><div class="orb prayer">&#10022; ${player.prayerPoints}/${maxPrayer()}</div><button class="orb run ${player.runEnabled ? 'active' : ''}" onclick="toggleRun()" title="Toggle run (R)">&#10148; ${Math.floor(player.runEnergy)}%</button><button class="orb spec ${player.specArmed ? 'armed' : ''}" onclick="toggleSpec()" title="Special attack — arm/disarm (costs 50%)">&#9889; ${Math.floor(player.specEnergy)}%</button>`;
+  document.querySelector('#sidebar header small').textContent =
+    `CHAPTER 1  CMB ${combatLevel()}` + (admin ? '  ·  ⚙ ADMIN' : '');
+  const s = player.story;
+  questTracker.innerHTML =
+    s.q >= QUESTS.length
+      ? '<b>CHAPTER ONE</b>All three quests complete.'
+      : `<b>${QUESTS[s.q].name}</b>${QUESTS[s.q].steps[s.step]}`;
+  if (player.contract)
+    questTracker.innerHTML += `<div class="miniContract"><b>CONTRACT</b>${player.contract.remaining === 0 ? 'Return to Guard Bren' : player.contract.remaining + ' ' + player.contract.name + (player.contract.remaining === 1 ? '' : 's') + ' remaining'}</div>`;
+  const bq = player.sideQuests.boarHunt,
+    sq = player.sideQuests.silkAndCinders,
+    rq = player.sideQuests.brokenRoad,
+    hq = player.sideQuests.hearthAndHome,
+    mq = player.sideQuests.cureMirehaven;
+  if (mq.step === 1)
+    questTracker.innerHTML += `<div class="miniContract"><b>A CURE FOR MIREHAVEN</b>${Math.min(4, invCount('bogMoss'))}/4 Bog moss gathered</div>`;
+  if (hq.step === 1)
+    questTracker.innerHTML += `<div class="miniContract"><b>HEARTH AND HOME</b>Meat ${Math.min(1, invCount('rawMeat'))}/1 · Cabbage ${Math.min(1, invCount('cabbage'))}/1 · Herb ${Math.min(1, invCount('herb'))}/1</div>`;
+  if (rq.step === 1)
+    questTracker.innerHTML += `<div class="miniContract"><b>THE BROKEN ROAD</b>${rq.kills}/4 road bandits defeated</div>`;
+  if (sq.step === 1)
+    questTracker.innerHTML += `<div class="miniContract"><b>SILK AND CINDERS</b>${sq.kills}/4 cave spiders defeated</div>`;
+  if (bq.step === 1)
+    questTracker.innerHTML += `<div class="miniContract"><b>THE BOAR HUNT</b>${bq.kills}/3 wild boars defeated</div>`;
+  if (player.grave)
+    questTracker.innerHTML += `<div class="miniGrave"><b>GRAVESTONE</b>${Math.max(1, Math.ceil((player.grave.expiresAt - Date.now()) / 60000))} min - ${regionNameFor(player.grave.x, player.grave.y)}</div>`;
+}
+document.getElementById('closeMap').onclick = closeWorldMap;
+document.getElementById('homeTeleport').onclick = homeTeleport;
+document.getElementById('worldMapCanvas').onclick = mapDestination;
+document.getElementById('worldMapCanvas').onmousemove = mapHover;
+document.getElementById('worldMapCanvas').onmouseleave = () =>
+  document.getElementById('mapTooltip').classList.add('hidden');
+document.querySelectorAll('nav button').forEach(
+  (b) =>
+    (b.onclick = () => {
+      activeTab = b.dataset.tab;
+      if (activeTab === 'quest') advanceTutorial(5);
+      document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('active', x === b));
+      renderPanel();
+    }),
+);
+reset.onclick = () => {
+  if (confirm('Erase your character and restart?')) {
+    localStorage.removeItem('emberfall-ef1');
+    location.reload();
+  }
+};
+const adminBtn = document.getElementById('adminBtn');
+adminBtn.onclick = () => (admin ? adminMenu() : loginAdmin());
+adminBtn.classList.toggle('on', admin);
+function openWiki() {
+  window.open('wiki.html', '_blank');
+}
+document.getElementById('wikiBtn').onclick = openWiki;
+if (admin) {
+  player.runEnabled = true;
+  player.runEnergy = 100;
+}
+message(
+  'Welcome to Heartwood. Open the Journal tab to find Training Quests that teach each skill and pay coins and XP. Walking and running are immediate; combat and skills use a 0.6 second action rhythm. Press R to toggle run.',
+  'game',
+);
+checkRegion();
+syncLevels(true);
+updateUI();
+renderPanel();
+requestAnimationFrame(render);

@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Emberfall Wiki</title>
+<style>
+  :root {
+    --bg: #17140e;
+    --panel: #211d15;
+    --panel2: #2a2417;
+    --edge: #4c3f26;
+    --gold: #e1b557;
+    --ink: #ddd0aa;
+    --dim: #9a8e6f;
+    --link: #7fc0e6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #100e09;
+    color: var(--ink);
+    font: 15px/1.5 'Segoe UI', system-ui, sans-serif;
+  }
+  header.top {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: linear-gradient(#241f16, #1a160f);
+    border-bottom: 3px ridge #8c7040;
+    padding: 12px 18px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  header.top h1 {
+    margin: 0;
+    font: 700 22px Georgia, serif;
+    color: var(--gold);
+    letter-spacing: 0.5px;
+  }
+  header.top h1 span { color: #b7f07a; }
+  nav.sections { display: flex; gap: 6px; flex-wrap: wrap; }
+  nav.sections a {
+    color: var(--ink);
+    text-decoration: none;
+    padding: 5px 11px;
+    border: 1px solid var(--edge);
+    border-radius: 4px;
+    background: #1b1710;
+    font-size: 13px;
+  }
+  nav.sections a:hover { border-color: var(--gold); color: #fff; }
+  #search {
+    margin-left: auto;
+    padding: 8px 12px;
+    min-width: 220px;
+    background: #12100b;
+    border: 1px solid var(--edge);
+    color: var(--ink);
+    border-radius: 5px;
+    font-size: 14px;
+  }
+  #search:focus { outline: none; border-color: var(--gold); }
+  main { max-width: 1180px; margin: 0 auto; padding: 22px 18px 80px; }
+  section { margin: 28px 0; scroll-margin-top: 76px; }
+  section > h2 {
+    font: 700 20px Georgia, serif;
+    color: var(--gold);
+    border-bottom: 1px solid var(--edge);
+    padding-bottom: 6px;
+    margin: 0 0 14px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 12px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-left: 3px solid var(--gold);
+    border-radius: 5px;
+    padding: 12px 14px;
+    scroll-margin-top: 80px;
+  }
+  .card h3 { margin: 0 0 2px; font: 700 16px Georgia, serif; color: #f0dca0; }
+  .card .role { color: var(--dim); font-size: 12.5px; margin-bottom: 8px; }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: #3a2f1a;
+    color: #ffe6b0;
+    border: 1px solid #6d5836;
+    margin: 0 4px 4px 0;
+  }
+  .badge.region { background: #26301f; color: #cfe6a6; border-color: #4b6b39; }
+  .kv { margin: 6px 0; font-size: 13.5px; }
+  .kv b { color: #ecd79c; }
+  ul.tight { margin: 6px 0; padding-left: 18px; }
+  ul.tight li { margin: 2px 0; font-size: 13.5px; }
+  .quote { color: var(--dim); font-style: italic; font-size: 13px; margin: 3px 0; }
+  table.drops { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13px; }
+  table.drops td { padding: 3px 6px; border-top: 1px solid #362d1c; }
+  table.drops td:last-child { text-align: right; color: var(--dim); }
+  .stat { color: #b7f07a; font-weight: 600; }
+  .steps { counter-reset: s; padding-left: 0; list-style: none; margin: 6px 0; }
+  .steps li { counter-increment: s; padding: 3px 0 3px 26px; position: relative; font-size: 13.5px; }
+  .steps li::before {
+    content: counter(s);
+    position: absolute;
+    left: 0;
+    top: 3px;
+    width: 18px;
+    height: 18px;
+    background: #3a2f19;
+    color: var(--gold);
+    border-radius: 50%;
+    text-align: center;
+    font-size: 11px;
+    line-height: 18px;
+  }
+  .reward { color: #cbb98a; font-size: 13px; margin-top: 6px; }
+  .reward b { color: var(--gold); }
+  .guide-lv { color: var(--gold); font-weight: 600; min-width: 40px; display: inline-block; }
+  .empty { color: var(--dim); padding: 20px; text-align: center; }
+  footer { text-align: center; color: var(--dim); font-size: 12px; padding: 30px; }
+  a.wlink { color: var(--link); text-decoration: none; }
+  a.wlink:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>EMBER<span>FALL</span> WIKI</h1>
+  <nav class="sections">
+    <a href="#lore">Lore</a>
+    <a href="#guides">How-to Guides</a>
+    <a href="#people">People</a>
+    <a href="#monsters">Monsters</a>
+    <a href="#items">Items</a>
+    <a href="#quests">Quests</a>
+    <a href="#skills">Skills</a>
+  </nav>
+  <input id="search" type="search" placeholder="Search the wiki…" autocomplete="off" />
+</header>
+<main id="main"></main>
+<footer>Emberfall Wiki — generated live from the game's data. Reflects the current game state.</footer>
+
+<script src="js/data.js?v=20260716l"></script>
+<script>
+// ---------- helpers shared with the game ----------
+function regionNameFor(x, y) {
+  if (x >= 8 && x <= 33 && y >= 74 && y <= 97) return 'Ashen Barrow';
+  if (x < 64) return y < 100 ? 'Ashfall Wastes' : 'Sablemarsh';
+  if (y < 40) return 'Frostmere';
+  if (x < 128) return y < 100 ? 'Pineholt' : 'Greenrest Vale';
+  return y < 106 ? 'Thornwood' : 'Cinderforge';
+}
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+// NPC -> shop key (from the game's talk() routing)
+const NPC_SHOP = {
+  alaric: 'general', murphy: 'fishing', orin: 'hunter', torren: 'smith',
+  fenwick: 'mirehaven', mara: 'embercross',
+};
+const SHOP_TITLE = {
+  general: "Alaric's General Store", fishing: "Murphy's Fishing Supplies",
+  hunter: "Orin's Hunting Supplies", smith: "Torren's Mining Tools",
+  mirehaven: 'Sablemarsh Supplies', embercross: 'Frostmere Provisions',
+};
+
+// Side quests (defined in the game logic, summarised here)
+const SIDE_QUESTS = [
+  { name: 'The Boar Hunt', giver: 'Elder Willow (Thornwood)', steps: ['Speak with Elder Willow', 'Defeat 3 wild boars', 'Return to Willow'], reward: 'Thornwood mantle, 150 coins, Slayer & Cooking XP' },
+  { name: 'Silk and Cinders', giver: 'Scout Vale (Ashfall Wastes)', steps: ['Speak with Scout Vale', 'Defeat 4 cave spiders in the Barrow', 'Return to Vale'], reward: 'Cave-silk robe, 180 coins, 20 Ember runes, Magic & Slayer XP' },
+  { name: 'The Broken Road', giver: 'Mara (Frostmere)', steps: ['Speak with Mara', 'Defeat 4 road bandits', 'Return to Mara'], reward: 'Frostmere buckler, 160 coins, Defence & Slayer XP' },
+  { name: 'Hearth and Home', giver: 'Tamsin (Pineholt inn)', steps: ['Speak with Tamsin', 'Gather boar meat, cabbage and a wild herb', 'Return to Tamsin'], reward: '120 coins, 3 stews, Cooking & Farming XP' },
+  { name: 'A Cure for Sablemarsh', giver: 'Healer Sable (Sablemarsh)', steps: ['Speak with Sable', 'Gather 4 bog moss from boglings', 'Return to Sable'], reward: 'Sablemarsh charm, 2 antidotes, 160 coins, Herblore & Defence XP' },
+];
+
+// Skill guide (mirrors the in-game guide)
+const SKILL_GUIDE = {
+  Attack: { about: 'Melee accuracy and weapon tiers. Train with the Accurate style.', tiers: [[1, 'Bronze sword'], [1, 'Pineholt blade (quest)'], [8, 'Iron longsword (Smithing)']] },
+  Strength: { about: 'Melee damage. Train with the Aggressive style.', tiers: [[1, 'Higher levels hit harder'], [1, 'Burst of Strength prayer adds damage']] },
+  Defence: { about: 'Reduces damage taken; unlocks armour. Train with the Defensive style.', tiers: [[1, 'Bronze shield, leather body'], [3, 'Rabbit-fur gloves, Frostmere buckler'], [4, 'Iron platebody, Thornwood mantle'], [6, 'Warden cloak']] },
+  Hitpoints: { about: 'Your health pool. Rises automatically as you deal damage.', tiers: [[1, 'Start at 10 HP'], [1, 'Every hit of damage trains it']] },
+  Ranged: { about: 'Bow accuracy and damage.', tiers: [[1, 'Shortbow + bronze arrows']] },
+  Magic: { about: 'Cast combat spells with a staff and runes.', tiers: [[1, 'Ember staff + Ember runes cast Ember Strike']] },
+  Prayer: { about: 'Bury bones for XP; spend points on boosts. Recharge at an altar.', tiers: [[1, 'Burst of Strength'], [3, 'Thick Skin']] },
+  Fishing: { about: 'Fish ripples with a rod and bait (buy from Murphy).', tiers: [[1, 'Riverfish at the Greenrest docks'], [3, 'Marsh eel in Sablemarsh']] },
+  Cooking: { about: 'Cook raw food on a fire or range. Higher levels burn less.', tiers: [[1, 'Riverfish, boar meat, rabbit'], [1, 'Marsh eel cures poison']] },
+  Woodcutting: { about: 'Chop trees for logs with a hatchet. Trees regrow.', tiers: [[1, 'Vale oaks & Pineholt pines']] },
+  Firemaking: { about: 'Light logs with a tinderbox for a cooking fire.', tiers: [[1, 'Light logs anywhere']] },
+  Mining: { about: 'Mine rocks with a pickaxe (buy from Torren). Rocks regenerate.', tiers: [[1, 'Copper ore'], [5, 'Iron ore']] },
+  Smithing: { about: 'Smelt ore into bars and forge gear at the Cinderforge anvil.', tiers: [[1, 'Bronze bars'], [5, 'Iron bars'], [8, 'Iron longsword'], [12, 'Iron platebody']] },
+  Farming: { about: 'Plant seeds at the Greenrest farm, then harvest.', tiers: [[1, 'Cabbage seeds → cabbages']] },
+  Herblore: { about: 'Brew potions from herbs, moss and vials.', tiers: [[1, 'Healing potion'], [2, 'Marsh antidote'], [3, 'Run energy potion']] },
+  Crafting: { about: 'Turn hides, fur and silk into armour.', tiers: [[1, 'Leather body'], [3, 'Rabbit-fur gloves'], [5, 'Cave-silk robe']] },
+  Fletching: { about: 'Carve logs into bows and arrows with a knife.', tiers: [[1, 'Bronze arrows'], [4, 'Shortbow']] },
+  Slayer: { about: 'Complete monster contracts from Guard Bren.', tiers: [[1, 'Contracts give Slayer XP + rewards']] },
+  Hunter: { about: 'Trap rabbits with wooden snares.', tiers: [[1, 'Snares at Thornwood burrows']] },
+  Thieving: { about: 'Pickpocket villagers around the towns.', tiers: [[1, 'Try villagers marked as pickpocketable']] },
+};
+
+const REGION_ORDER = ['Greenrest Vale', 'Pineholt', 'Frostmere', 'Thornwood', 'Cinderforge', 'Sablemarsh', 'Ashfall Wastes', 'Ashen Barrow'];
+
+// ---------- World lore: The Bound Ember ----------
+const LORE = [
+  { title: 'The Emberfall', body: 'An age ago, a shard of living fire fell from the sky in a night still remembered as the Emberfall — the night that gave this land its name. Where it struck, the earth burned and the dead would not rest, for the fire was no mere flame but a hungry will that sought to consume all it touched and remake the world as ash. Kingdoms that had stood a thousand years guttered out in a single season.' },
+  { title: 'The Bound Ember', body: 'Fire cannot be unmade. So the Ember could not be destroyed — only contained. A fellowship of guardians drove the living fire deep beneath the earth, into the black hollow that became the Ashen Barrow, and there they bound it. It waits below still: patient, burning, and awake. Everything in Emberfall — the Ember runes, the ember-forged steel, the fever in the marsh, the heat of the volcano — is an echo of that buried fire leaking through the seals.' },
+  { title: 'The Wardens of Ash', body: 'The guardians who bound the Ember were the Wardens of Ash. They sealed the fire behind three seals forged from what they valued most — their Oath, their Watch, and their Cinders (their very lives). "Three seals became one relic. One relic became a door." The greatest among them gave up their body and death itself to become the Ashen Warden, an undying sentinel set at the door with a single charge: keep it shut, and wake only if the seal breaks and the eastern bell falls silent. Over the centuries the order dwindled to a handful of scattered watchers who barely remember their own purpose.' },
+  { title: 'The Seven Regions', body: 'The scarred land slowly healed into seven regions, each shaped by how near it lies to the buried fire. GREENREST VALE is the green heart, farthest from the wound — peaceful meadows and the town where travellers gather. PINEHOLT holds the northern road, guarded by watch-captains descended from Warden scouts. FROSTMERE lies in the far north, where deep cold holds the Ember\'s heat at bay. THORNWOOD, the eastern woodland, keeps the old Warden verses alive as hunters\' ballads. CINDERFORGE sits closest to the fire; its smiths work ember-touched ore beside a stirring volcano. SABLEMARSH, the southern swamp, suffers a marsh-fever that seeps up from below. And the ASHFALL WASTES are the cursed ground directly above the Barrow, where ash falls like snow and the dead walk.' },
+  { title: 'The Failing Seals', body: 'The seals are giving way. Cinderforge\'s fires climb higher each week, the Ashfall spreads, marsh-fever worsens in Sablemarsh, and beasts and worse spill out of the wastes into the settled lands. The scattered Wardens — Scholar Mira the loremaster, Captain Rowan of the northern watch, Scout Vale at the Barrow door, Guard Bren in the Vale — feel the danger they were born to guard against returning, and know their thinning order cannot hold it alone.' },
+  { title: 'The Wanderer', body: 'You are the Wanderer. You woke at the edge of Greenrest Vale with no memory of who you are or how you came to be here — and on that same night, the ancient Barrow tablets glowed. The Ember stirs when you draw near; the undying Warden does not strike you down on sight as it would any other. The watchers have come to suspect the truth: that you are the last of the Warden bloodline, ember-touched, the one hand that might reach the bound fire and choose — to re-seal the door forever, or to open it.' },
+  { title: 'Factions', body: 'THE WARDENS OF ASH — the fading order sworn to keep the Ember bound (Mira, Rowan, Vale, Bren). They quietly test and guide the Wanderer. THE EMBERWRIGHTS of Cinderforge — smiths like Torren who harness the Ember\'s heat to forge peerless steel; some revere the fire, some fear it. THE COMMON FOLK — traders, farmers, innkeepers and healers across the seven regions who know only rumours and hardship, living in the shadow of a danger most have half-forgotten.' },
+];
+function loreHTML() {
+  const cards = LORE.map((l) => `<div class="card" data-name="lore ${esc(l.title)}">
+    <h3>${esc(l.title)}</h3>
+    <p style="line-height:1.55;margin:6px 0 0">${esc(l.body)}</p>
+  </div>`).join('');
+  return `<section id="lore"><h2>Lore — The Bound Ember</h2><div class="grid" style="grid-template-columns:1fr">${cards}</div></section>`;
+}
+
+// ---------- How-to guides ----------
+const GUIDES = [
+  { title: 'Getting started', steps: [
+    'You begin at the Greenrest Vale plaza. Left-click any ground tile to walk there.',
+    'Open the Journal tab and read the Training Quests — each teaches a skill and pays coins + XP.',
+    'Talk to Guide Elowen (the ! marker) to begin the main story quest.',
+    'Buy a weapon from Alaric\'s General Store, then press M to open the world map.' ] },
+  { title: 'Moving around & travel', steps: [
+    'Click to move; the character auto-paths around obstacles.',
+    'Press R to toggle running (drains run energy, which regenerates while walking).',
+    'Press M for the full world map — click any reachable tile to travel there automatically.',
+    'Press H to Home Teleport back to the Greenrest Vale plaza (has a short cooldown).' ] },
+  { title: 'Combat basics', steps: [
+    'Equip a weapon in the Gear tab, then left-click a monster to attack.',
+    'Pick a combat style in the Gear tab: Accurate trains Attack, Aggressive trains Strength, Defensive trains Defence. Every hit also trains Hitpoints.',
+    'Carry food (bread, cooked fish/meat) and click it in your Pack to heal.',
+    'If your HP hits zero you die, drop most items as a gravestone, and wake at Greenrest.' ] },
+  { title: 'Combat depth: speeds, specials & gear tiers', steps: [
+    'Attack speed: each weapon has a speed (in ticks). Fast weapons like the iron dagger (2) and mithril scimitar (3) hit more often; slow two-handers like the emberforged greatsword (6) hit hard but rarely — check the Gear tab.',
+    'Special attacks: some weapons have a special (the ⚡ orb, top bar). Click the orb to arm it (costs 50% energy, which regenerates over ~18s); your next hit unleashes it. "Crushing blow" (steel/ember greatsword) is a guaranteed +60% hit; "Flurry" (dagger/scimitar) strikes twice.',
+    'Gear tiers: bronze → iron → steel → mithril → emberforged, each a real stat jump but gated by level. Steel needs Attack/Defence 10, mithril 20, emberforged 30 — the Gear tab tells you if you can wield an item.',
+    'Getting the tiers: smith them (mine coal + mithril ore in Cinderforge, smelt steel and mithril bars, then forge gear), or take them as drops from tough enemies. Emberforged needs Emberforged ingots, which only drop from bosses and the Warden.',
+    'Spells: with an Ember staff equipped, pick a spell in the Gear tab — Ember Strike (basic), Ember Blast (Magic 15, harder hitting), Frostbind (Magic 20, freezes the target). Right-click an item for High Alchemy (Magic 25) to turn it into coins.',
+    'Prayers: only one is active at a time. Beyond Burst of Strength and Thick Skin there are Sharp Eye / Clarity (accuracy), Ultimate Strength (+5 damage), Steel Skin (+5 defence), and Protect from Melee (halves incoming damage).' ] },
+  { title: 'Where to fight tougher enemies', steps: [
+    'Dire wolves and the Goblin warlord roam Pineholt (north) — the warlord drops steel bars, a steel longsword, and rare Emberforged ingots.',
+    'Frost trolls prowl Frostmere (snowy north) and drop mithril ore and rare ingots.',
+    'Cinder fiends and the Cinder Colossus boss haunt Cinderforge (volcanic southeast) — the Colossus is the best source of Emberforged ingots and can drop the emberforged greatsword and platebody.',
+    'The Ashen Warden in the Barrow now also drops Emberforged ingots.' ] },
+  { title: 'Magic & Prayer', steps: [
+    'Buy an Ember staff and Ember runes from Alaric, equip the staff, and pick a spell.',
+    'Attacking with the staff casts spells and trains Magic (keep runes stocked).',
+    'Bury Bones dropped by enemies (click them in your Pack) to train Prayer.',
+    'Spend Prayer points on boosts (Prayer tab); recharge at the Frostmere altar.' ] },
+  { title: 'Fishing → Cooking', steps: [
+    'Buy a Fishing rod and Fishing bait from Fisher Murphy at the Greenrest docks.',
+    'Click the rippling water off the dock to fish; it auto-fishes until you run out of bait.',
+    'Light a fire (see Woodcutting) or use a town range, then click your raw fish to cook — it auto-cooks the whole stack.',
+    'Higher Cooking levels burn food far less often. Cooked marsh eel also cures poison.' ] },
+  { title: 'Woodcutting → Firemaking', steps: [
+    'Buy a Bronze hatchet and a Tinderbox from Alaric.',
+    'Click a tree to chop logs; trees deplete after a few logs then regrow.',
+    'With logs in your pack, use the Tinderbox (or click logs) to light a fire.',
+    'Stand by the fire and cook raw food on it.' ] },
+  { title: 'Mining → Smithing', steps: [
+    'Buy a Bronze pickaxe from Torren in Cinderforge (an Iron pickaxe mines faster).',
+    'Click copper or iron rocks in Cinderforge to mine ore; rocks deplete then regenerate.',
+    'At the Cinderforge anvil, smelt 2 copper into a bronze bar, or 2 iron into an iron bar (Smithing 5).',
+    'Forge bars into gear: iron longsword (Smithing 8), iron platebody (Smithing 12).' ] },
+  { title: 'Farming → Herblore', steps: [
+    'Buy Cabbage seeds and Empty vials from Alaric.',
+    'Plant seeds at the Greenrest farm patches (south of the plaza) and wait for them to grow, then harvest.',
+    'Gather Wild herbs (monster drops) and Bog moss (from boglings in Sablemarsh).',
+    'Brew potions at the Sablemarsh cauldron: healing potion (herb+vial), antidote (2 bog moss+vial), energy potion (2 herb+vial).' ] },
+  { title: 'Crafting, Fletching & Hunter', steps: [
+    'Crafting: take hides/fur/silk to the Greenrest workbench — leather body (3 hide), fur gloves (3 fur), cave-silk robe (3 silk).',
+    'Fletching: with a Carving knife, turn logs into bronze arrows (Lv1) or a shortbow (Lv4).',
+    'Hunter: buy a Wooden snare from Orin in Thornwood and set it at the rabbit burrows.',
+    'Slayer: take monster contracts from Guard Bren in Greenrest for Slayer XP and rewards.' ] },
+  { title: 'Banking', steps: [
+    'Find a bank booth (Greenrest Vale) or talk to Banker Willa.',
+    'Pick a transfer amount: 1, 5, 10, All, or X (custom).',
+    'Click an item in the Bank grid to withdraw it, or in the Backpack grid to deposit it.',
+    'Use "Deposit backpack" to bank everything at once.' ] },
+  { title: 'Quest: A Wanderer in Greenrest', steps: [
+    'Speak with Guide Elowen at the Greenrest Vale plaza to begin.',
+    'Buy a Fishing rod and 3 bait from Fisher Murphy at the docks.',
+    'Fish a riverfish at the rippling water off the dock.',
+    'Cook the fish on the town range (the fire beside the plaza).',
+    'Defeat a goblin raider (they roam Pineholt, to the north).',
+    'Return to Elowen. Reward: 100 coins and 60 Attack XP.' ] },
+  { title: 'Quest: Shadows Over Pineholt', steps: [
+    'Travel north to Pineholt and speak with Captain Rowan.',
+    'Kill goblins in Pineholt until you have 3 goblin hides.',
+    'Bring the hides back to Captain Rowan.',
+    'Travel east to Cinderforge and speak with Scholar Mira. Reward: Pineholt blade and 120 coins.' ] },
+  { title: 'Quest: Beneath the Ashen Barrow', steps: [
+    'Speak with Scholar Mira in Cinderforge to start.',
+    'Defeat the Barrow guardian at the Ashfall Wastes surface ruins and take the key it drops.',
+    'Enter the Ashen Barrow through the glowing archway.',
+    'Defeat the Ashen Warden deep in the vault.',
+    'Return the Ember relic to Scholar Mira. Reward: 300 coins and 200 Attack XP.' ] },
+  { title: 'Raid guide: the Ashen Barrow', steps: [
+    'Prepare: bring your best armour and weapon, plenty of cooked food, and (optionally) a Barrow lantern to light the vault.',
+    'Travel west then north into the Ashfall Wastes and enter via the purple archway near Scout Vale — you arrive in the sealed vault.',
+    'Clear trash for reward potential: skeletons add 15%, cave spiders 12%, and ash bats 10% each. Higher potential improves your chance at unique drops.',
+    'Pull the ancient lever to raise the portcullis blocking the deeper chamber.',
+    'Fight the Ashen Warden (level 30). At half health it tears its ember seal and ENRAGES, hitting harder and faster.',
+    'Watch the floor — the Warden marks tiles with burning sigils. Step off a marked tile before it detonates.',
+    'After the Warden falls, open the Warden chest for coins and a shot at uniques: Warden cloak, Ashen guard, or Barrow lantern.',
+    'Your clear time is recorded; the return archway takes you back to the surface.' ] },
+  { title: 'Boss guide: the Ashen Warden', steps: [
+    'Location: the deep chamber of the Ashen Barrow. Pull the ancient lever to raise the portcullis, then engage it.',
+    'Stats: 30 HP, hits for up to 4, attacks from up to 6 tiles away, and gives 90 combat XP.',
+    'Bring your best wieldable weapon and armour, a full inventory of cooked food, and ideally a crushing-blow special weapon (steel battleaxe or emberforged greatsword) to burst it down.',
+    'Key mechanic — burning sigils: it marks the floor on and around your tile. When you see "marks the ground beneath you", step one tile off the marked squares before they detonate (3 damage, or 4 when enraged).',
+    'At half health (15 HP) it ENRAGES: it hits harder and floods sigils far faster that detonate almost instantly — keep moving between every attack.',
+    'Turn on Protect from Melee (Prayer 15) to halve its hits, arm your special attack for big bursts, or cast Frostbind to freeze it in place. Eat whenever you drop low.',
+    'Reward: the kill unseals the Warden chest — coins plus a chance at the Warden cloak, Ashen guard, Barrow lantern, and an Emberforged ingot. Clear skeletons (+15%), cave spiders (+12%) and ash bats (+10%) beforehand to raise reward potential and improve your unique-drop odds.',
+    'Shortcut: in Admin mode you are invincible, so you can walk in and kill it freely to test the fight.' ] },
+  { title: 'Making money', steps: [
+    'Sell monster drops and surplus gear to shops.',
+    'Fish and cook, or mine and smith, then sell the products.',
+    'Complete quests and Guard Bren\'s contracts for coin rewards.',
+    'Discover all seven regions for a bonus, and clear the Barrow chest for high-value loot.' ] },
+  { title: 'Admin / god mode', steps: [
+    'Click the Admin button (bottom-left) and enter the passcode.',
+    'Admin mode makes you invincible and always running, and unlocks an item spawner.',
+    'Open the Admin panel for: Spawn items, +1000 coins, Heal, and Set all skills to 99.',
+    'Click Admin again to reopen the panel, or choose "Disable admin mode" to return to normal play.' ] },
+];
+function guidesHTML() {
+  const cards = GUIDES.map((g) => `<div class="card" data-name="how to ${esc(g.title)}">
+    <h3>${esc(g.title)}</h3>
+    <ol class="steps">${g.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>
+  </div>`).join('');
+  return `<section id="guides"><h2>How-to Guides (${GUIDES.length})</h2><div class="grid">${cards}</div></section>`;
+}
+
+// ---------- build item source index ----------
+const soldBy = {}, droppedBy = {};
+for (const [key, list] of Object.entries(SHOPS)) for (const [id, price] of list) (soldBy[id] = soldBy[id] || []).push({ shop: SHOP_TITLE[key] || key, price });
+for (const [kind, m] of Object.entries(MONSTER_TYPES)) for (const d of m.drops) (droppedBy[d[0]] = droppedBy[d[0]] || []).push(m.name);
+
+// monster -> regions where it spawns
+const monsterRegions = {};
+for (const [kind, x, y] of MONSTER_SPAWNS) {
+  const r = regionNameFor(x, y);
+  (monsterRegions[kind] = monsterRegions[kind] || new Set()).add(r);
+}
+
+// ---------- renderers ----------
+function itemType(it) {
+  if (it.attack) return 'Weapon (melee)';
+  if (it.ranged) return 'Weapon (ranged)';
+  if (it.magic) return 'Weapon (magic)';
+  if (it.slot === 'armor') return 'Armour (body)';
+  if (it.slot === 'shield') return 'Shield';
+  if (it.slot === 'gloves') return 'Gloves';
+  if (it.heal) return 'Food';
+  if (it.energy) return 'Potion';
+  if (it.cure) return 'Food (cures poison)';
+  return 'Item';
+}
+
+function peopleHTML() {
+  const cards = NPCS.map((n) => {
+    const region = regionNameFor(n.x, n.y);
+    const shopKey = NPC_SHOP[n.id];
+    const shop = shopKey ? SHOPS[shopKey] : null;
+    const quotes = [n.dialogue, ...((NPC_AMBIENT[n.id]) || [])].filter(Boolean);
+    return `<div class="card" id="npc-${n.id}" data-name="${esc(n.name)} ${esc(n.role)} ${region}">
+      <h3>${esc(n.name)}</h3>
+      <div class="role">${esc(n.role)}</div>
+      <span class="badge region">${region}</span>
+      ${shop ? `<span class="badge">Shopkeeper</span>` : ''}
+      ${shop ? `<div class="kv"><b>Sells:</b><ul class="tight">${shop.map(([id, p]) => `<li>${esc(ITEMS[id]?.name || id)} — ${p} coins</li>`).join('')}</ul></div>` : ''}
+      ${quotes.length ? `<div class="kv"><b>Quotes</b>${quotes.map((q) => `<div class="quote">“${esc(q)}”</div>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+  return `<section id="people"><h2>People of Emberfall (${NPCS.length})</h2><div class="grid">${cards}</div></section>`;
+}
+
+function monstersHTML() {
+  const cards = Object.entries(MONSTER_TYPES).map(([kind, m]) => {
+    const regions = [...(monsterRegions[kind] || [])];
+    const drops = m.drops.map((d) => {
+      const [id, lo, hi, chance] = d;
+      const qty = lo === hi ? lo : `${lo}–${hi}`;
+      const rate = chance ? `${Math.round(chance * 100)}%` : 'Always';
+      return `<tr><td>${esc(ITEMS[id]?.name || id)}</td><td>${qty}</td><td>${rate}</td></tr>`;
+    }).join('');
+    return `<div class="card" id="monster-${kind}" data-name="${esc(m.name)} ${regions.join(' ')}">
+      <h3>${esc(m.name)}</h3>
+      <div class="role">${regions.map((r) => `<span class="badge region">${r}</span>`).join('') || '<span class="badge region">Unknown</span>'}</div>
+      <div class="kv"><b>Hitpoints:</b> <span class="stat">${m.hp}</span> &nbsp; <b>Max hit:</b> <span class="stat">${m.maxHit}</span> &nbsp; <b>XP:</b> <span class="stat">${m.xp}</span></div>
+      <div class="kv"><b>Drops</b><table class="drops">${drops}</table></div>
+    </div>`;
+  }).join('');
+  return `<section id="monsters"><h2>Monsters (${Object.keys(MONSTER_TYPES).length})</h2><div class="grid">${cards}</div></section>`;
+}
+
+function itemsHTML() {
+  const cards = Object.entries(ITEMS).filter(([id]) => id !== 'coins').map(([id, it]) => {
+    const stats = [];
+    if (it.attack) stats.push(`+${it.attack} attack`);
+    if (it.ranged) stats.push(`+${it.ranged} ranged`);
+    if (it.magic) stats.push(`+${it.magic} magic`);
+    if (it.defence) stats.push(`+${it.defence} defence`);
+    if (it.heal) stats.push(`heals ${it.heal}`);
+    if (it.energy) stats.push(`+${it.energy}% run energy`);
+    if (it.cure) stats.push('cures poison');
+    const sources = [];
+    if (soldBy[id]) sources.push('Sold by ' + soldBy[id].map((s) => `${s.shop} (${s.price}gp)`).join(', '));
+    if (droppedBy[id]) sources.push('Dropped by ' + droppedBy[id].join(', '));
+    return `<div class="card" id="item-${id}" data-name="${esc(it.name)} ${itemType(it)}">
+      <h3>${esc(it.name)}</h3>
+      <div class="role">${itemType(it)}${it.stack ? ' · stackable' : ''}</div>
+      ${stats.length ? `<div class="kv"><b>Stats:</b> ${stats.join(', ')}</div>` : ''}
+      <div class="kv"><b>Value:</b> ${it.value || 0} coins</div>
+      ${sources.length ? `<div class="kv"><b>Obtain:</b><ul class="tight">${sources.map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div>` : `<div class="kv role">Made via a skill or given as a quest reward.</div>`}
+    </div>`;
+  }).join('');
+  return `<section id="items"><h2>Items (${Object.keys(ITEMS).length - 1})</h2><div class="grid">${cards}</div></section>`;
+}
+
+function questsHTML() {
+  const main = QUESTS.map((q) => `<div class="card" data-name="${esc(q.name)}">
+    <h3>${esc(q.name)}</h3><div class="role">Main quest</div>
+    <ol class="steps">${q.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>
+    <div class="reward"><b>Reward:</b> ${esc(q.reward)}</div>
+  </div>`).join('');
+  const side = SIDE_QUESTS.map((q) => `<div class="card" data-name="${esc(q.name)} ${esc(q.giver)}">
+    <h3>${esc(q.name)}</h3><div class="role">Side quest · ${esc(q.giver)}</div>
+    <ol class="steps">${q.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>
+    <div class="reward"><b>Reward:</b> ${esc(q.reward)}</div>
+  </div>`).join('');
+  return `<section id="quests"><h2>Quests (${QUESTS.length + SIDE_QUESTS.length})</h2><div class="grid">${main}${side}</div></section>`;
+}
+
+function skillsHTML() {
+  const cards = Object.entries(SKILL_GUIDE).map(([name, g]) => `<div class="card" data-name="${name}">
+    <h3>${name}</h3>
+    <div class="kv role">${esc(g.about)}</div>
+    <ul class="tight">${g.tiers.map(([lv, t]) => `<li><span class="guide-lv">Lv ${lv}</span> ${esc(t)}</li>`).join('')}</ul>
+  </div>`).join('');
+  return `<section id="skills"><h2>Skills (${Object.keys(SKILL_GUIDE).length})</h2><div class="grid">${cards}</div></section>`;
+}
+
+document.getElementById('main').innerHTML =
+  loreHTML() + guidesHTML() + peopleHTML() + monstersHTML() + itemsHTML() + questsHTML() + skillsHTML();
+
+// scroll to hash target (from map links) and flash it
+function gotoHash() {
+  if (!location.hash) return;
+  const el = document.getElementById(location.hash.slice(1));
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.style.transition = 'box-shadow .3s';
+    el.style.boxShadow = '0 0 0 2px var(--gold)';
+    setTimeout(() => (el.style.boxShadow = ''), 1600);
+  }
+}
+addEventListener('hashchange', gotoHash);
+setTimeout(gotoHash, 60);
+
+// live search
+const search = document.getElementById('search');
+search.addEventListener('input', () => {
+  const q = search.value.trim().toLowerCase();
+  for (const card of document.querySelectorAll('.card')) {
+    const hay = (card.dataset.name + ' ' + card.textContent).toLowerCase();
+    card.style.display = !q || hay.includes(q) ? '' : 'none';
+  }
+  for (const sec of document.querySelectorAll('section')) {
+    const any = [...sec.querySelectorAll('.card')].some((c) => c.style.display !== 'none');
+    sec.style.display = any ? '' : 'none';
+  }
+});
+</script>
+</body>
+</html>

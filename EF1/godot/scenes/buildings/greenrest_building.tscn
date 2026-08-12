@@ -1,0 +1,116 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/building_entity.gd" id="1_building"]
+
+[sub_resource type="BoxMesh" id="Mesh_floor"]
+size = Vector3(10.2, 0.12, 7.2)
+
+[sub_resource type="StandardMaterial3D" id="Material_floor"]
+albedo_color = Color(0.388235, 0.278431, 0.172549, 1)
+roughness = 0.92
+
+[sub_resource type="BoxMesh" id="Mesh_wall_back"]
+size = Vector3(10.5, 2.6, 0.22)
+
+[sub_resource type="BoxShape3D" id="Shape_wall_back"]
+size = Vector3(10.5, 2.6, 0.22)
+
+[sub_resource type="BoxMesh" id="Mesh_wall_side"]
+size = Vector3(0.22, 2.6, 7.5)
+
+[sub_resource type="BoxShape3D" id="Shape_wall_side"]
+size = Vector3(0.22, 2.6, 7.5)
+
+[sub_resource type="BoxMesh" id="Mesh_wall_front"]
+size = Vector3(4.5, 2.6, 0.22)
+
+[sub_resource type="BoxShape3D" id="Shape_wall_front"]
+size = Vector3(4.5, 2.6, 0.22)
+
+[sub_resource type="StandardMaterial3D" id="Material_wall"]
+albedo_color = Color(0.67451, 0.560784, 0.376471, 1)
+roughness = 0.86
+
+[node name="GreenrestBuilding" type="Node3D"]
+script = ExtResource("1_building")
+
+[node name="Floor" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.06, 0)
+mesh = SubResource("Mesh_floor")
+material_override = SubResource("Material_floor")
+
+[node name="Walls" type="Node3D" parent="."]
+
+[node name="Back" type="StaticBody3D" parent="Walls"]
+position = Vector3(0, 1.3, -3.75)
+collision_layer = 1
+collision_mask = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/Back"]
+mesh = SubResource("Mesh_wall_back")
+material_override = SubResource("Material_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/Back"]
+shape = SubResource("Shape_wall_back")
+
+[node name="Left" type="StaticBody3D" parent="Walls"]
+position = Vector3(-5.25, 1.3, 0)
+collision_layer = 1
+collision_mask = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/Left"]
+mesh = SubResource("Mesh_wall_side")
+material_override = SubResource("Material_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/Left"]
+shape = SubResource("Shape_wall_side")
+
+[node name="Right" type="StaticBody3D" parent="Walls"]
+position = Vector3(5.25, 1.3, 0)
+collision_layer = 1
+collision_mask = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/Right"]
+mesh = SubResource("Mesh_wall_side")
+material_override = SubResource("Material_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/Right"]
+shape = SubResource("Shape_wall_side")
+
+[node name="FrontLeft" type="StaticBody3D" parent="Walls"]
+position = Vector3(-3, 1.3, 3.75)
+collision_layer = 1
+collision_mask = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/FrontLeft"]
+mesh = SubResource("Mesh_wall_front")
+material_override = SubResource("Material_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/FrontLeft"]
+shape = SubResource("Shape_wall_front")
+
+[node name="FrontRight" type="StaticBody3D" parent="Walls"]
+position = Vector3(3, 1.3, 3.75)
+collision_layer = 1
+collision_mask = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="Walls/FrontRight"]
+mesh = SubResource("Mesh_wall_front")
+material_override = SubResource("Material_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Walls/FrontRight"]
+shape = SubResource("Shape_wall_front")
+
+[node name="DoorThreshold" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.08, 3.75)
+scale = Vector3(0.15, 0.03, 0.05)
+mesh = SubResource("Mesh_wall_back")
+material_override = SubResource("Material_floor")
+
+[node name="BuildingName" type="Label3D" parent="."]
+position = Vector3(0, 3.15, 0)
+modulate = Color(1, 0.956863, 0.819608, 1)
+outline_size = 8
+text = "Building"
+font_size = 28
+billboard = 1

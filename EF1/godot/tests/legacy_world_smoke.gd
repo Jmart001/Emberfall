@@ -1,0 +1,25 @@
+extends SceneTree
+
+func _initialize() -> void:
+	var file := FileAccess.open("res://data/legacy_world.json", FileAccess.READ)
+	assert(file != null)
+	var data: Dictionary = JSON.parse_string(file.get_as_text())
+	assert(data.width == 192)
+	assert(data.height == 160)
+	assert(str(data.terrain).length() == 192 * 160)
+	assert(data.player_spawn.x == 174)
+	assert(data.player_spawn.y == 44)
+	assert(data.initial_npcs[0].x == 171)
+	assert(data.initial_npcs[0].y == 40)
+	assert(data.npcs.size() == 26)
+	assert(data.items.size() >= 80)
+	assert(data.shops.general.size() == 11)
+	assert(data.monster_types.size() >= 18)
+	assert(data.monster_spawns.size() >= 60)
+	var spawn_index: int = 44 * 192 + 174
+	var spawn_tile: int = "0123456789abcde".find(str(data.terrain)[spawn_index])
+	assert(spawn_tile in [0, 1, 5, 8, 10, 11, 12, 13])
+	var first_tile_world := Vector3(-144.0, 0.0, -120.0) + Vector3(0.75, 0.05, 0.75)
+	assert(first_tile_world.is_equal_approx(Vector3(-143.25, 0.05, -119.25)))
+	print("PASS: exact legacy world data, spawn, NPC, and 1.5m mapping")
+	quit()

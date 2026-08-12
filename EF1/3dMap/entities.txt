@@ -1,0 +1,192 @@
+// ==== Paste these into data.js, replacing the matching arrays/consts. ====
+
+// SPAWN POINT: set the player start to (174, 44) in game1.js (fresh x/y) and game3.js (respawn/home).
+
+const MONSTER_SPAWNS = [
+  ['rat', 84, 31],
+  ['rat', 110, 29],
+  ['wolf', 76, 35],
+  ['goblin', 90, 53],
+  ['goblin', 104, 53],
+  ['goblin', 86, 87],
+  ['goblin', 106, 87],
+  ['wolf', 82, 53],
+  ['wolf', 110, 55],
+  ['wolf', 80, 91],
+  ['boar', 144, 91],
+  ['boar', 168, 87],
+  ['direWolf', 82, 85],
+  ['direWolf', 112, 87],
+  ['goblinWarlord', 98, 91],
+  ['frostTroll', 100, 11],
+  ['frostTroll', 120, 31],
+  ['bandit', 79, 103],
+  ['bandit', 77, 105],
+  ['bandit', 74, 107],
+  ['bandit', 72, 108],
+  ['ashwrightRenn', 16, 10],
+  ['unboundConstruct', 18, 12],
+  ['rat', 159, 10],
+  ['rat', 167, 9],
+  ['rat', 176, 10],
+  ['rat', 183, 9],
+  ['guardian', 9, 74],
+  ['guardian', 15, 73],
+  ['guardian', 24, 73],
+  ['skeleton', 9, 80],
+  ['guardian', 15, 80],
+  ['bat', 24, 80],
+  ['spider', 9, 87],
+  ['guardian', 15, 87],
+  ['warden', 24, 88],
+  ['guardian', 9, 60],
+  ['goblin', 78, 59],
+  ['goblin', 88, 55],
+  ['wolf', 61, 29],
+  ['wolf', 67, 22],
+  ['wolf', 69, 32],
+  ['frostTroll', 35, 24],
+  ['frostTroll', 36, 31],
+  ['frostTroll', 48, 21],
+  ['cinderColossus', 83, 134],
+  ['cinderFiend', 91, 134],
+  ['goblinWarlord', 165, 83],
+  ['goblinWarlord', 165, 8],
+  ['goblinWarlord', 42, 89],
+  ['skeleton', 71, 131],
+  ['skeleton', 128, 99],
+  ['skeleton', 2, 49],
+  ['skeleton', 1, 45],
+  ['bat', 2, 65],
+  ['bat', 4, 46],
+  ['bat', 1, 40],
+  ['bogling', 129, 23],
+  ['bogling', 44, 146],
+  ['bogling', 36, 139],
+  ['bogling', 38, 129],
+  ['bogling', 48, 134],
+  ['bogling', 38, 113],
+  ['bogling', 32, 112],
+  ['bogling', 44, 110],
+  ['direWolf', 128, 135],
+  ['direWolf', 57, 8],
+  ['direWolf', 38, 6],
+  ['direWolf', 39, 15],
+  ['direWolf', 50, 8],
+];
+
+const FISH_SPOTS = [
+  { id: 'fish1', x: 143, y: 19, name: 'River fishing spot', item: 'rawFish', catchName: 'riverfish', level: 1, xp: 12, chance: 0.8 },
+  { id: 'fish2', x: 140, y: 19, name: 'River fishing spot', item: 'rawFish', catchName: 'riverfish', level: 1, xp: 12, chance: 0.8 },
+  { id: 'fish3', x: 141, y: 17, name: 'River fishing spot', item: 'rawFish', catchName: 'riverfish', level: 1, xp: 12, chance: 0.8 },
+  { id: 'fish4', x: 149, y: 88, name: 'River fishing spot', item: 'rawFish', catchName: 'riverfish', level: 1, xp: 12, chance: 0.8 },
+  { id: 'fish5', x: 152, y: 88, name: 'River fishing spot', item: 'rawFish', catchName: 'riverfish', level: 1, xp: 12, chance: 0.8 },
+  { id: 'fish6', x: 148, y: 88, name: 'River fishing spot', item: 'rawFish', catchName: 'riverfish', level: 1, xp: 12, chance: 0.8 },
+  { id: 'fish7', x: 147, y: 87, name: 'River fishing spot', item: 'rawFish', catchName: 'riverfish', level: 1, xp: 12, chance: 0.8 },
+  { id: 'fish8', x: 5, y: 113, name: 'Marsh eel spot', item: 'rawEel', catchName: 'marsh eel', level: 3, xp: 22, chance: 0.8 },
+  { id: 'fish9', x: 7, y: 111, name: 'Marsh eel spot', item: 'rawEel', catchName: 'marsh eel', level: 3, xp: 22, chance: 0.8 },
+  { id: 'fish10', x: 2, y: 110, name: 'Marsh eel spot', item: 'rawEel', catchName: 'marsh eel', level: 3, xp: 22, chance: 0.8 },
+  { id: 'fish11', x: 3, y: 108, name: 'Marsh eel spot', item: 'rawEel', catchName: 'marsh eel', level: 3, xp: 22, chance: 0.8 },
+];
+
+const ROCKS = [
+  { id: 'rock1', x: 124, y: 5, ore: 'copperOre', name: 'Copper rock', level: 1, xp: 12, color: '#b87343' },
+  { id: 'rock2', x: 126, y: 5, ore: 'copperOre', name: 'Copper rock', level: 1, xp: 12, color: '#b87343' },
+  { id: 'rock3', x: 126, y: 7, ore: 'copperOre', name: 'Copper rock', level: 1, xp: 12, color: '#b87343' },
+  { id: 'rock4', x: 127, y: 8, ore: 'ironOre', name: 'Iron rock', level: 5, xp: 22, color: '#8d8174' },
+  { id: 'rock5', x: 127, y: 6, ore: 'ironOre', name: 'Iron rock', level: 5, xp: 22, color: '#8d8174' },
+  { id: 'rock6', x: 123, y: 7, ore: 'coal', name: 'Coal rock', level: 10, xp: 28, color: '#2c2c2c' },
+  { id: 'rock7', x: 120, y: 9, ore: 'mithrilOre', name: 'Mithril rock', level: 20, xp: 55, color: '#4a6b8a' },
+];
+
+const TREES = [
+  { id: 'tree1', x: 86, y: 81, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree2', x: 108, y: 81, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree3', x: 119, y: 68, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree4', x: 120, y: 69, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree5', x: 119, y: 66, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree6', x: 165, y: 80, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree7', x: 120, y: 49, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree8', x: 70, y: 63, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree9', x: 71, y: 63, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree10', x: 71, y: 59, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree11', x: 68, y: 60, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree12', x: 73, y: 62, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree13', x: 137, y: 47, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree14', x: 142, y: 48, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree15', x: 137, y: 51, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree16', x: 140, y: 52, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree17', x: 135, y: 49, name: 'Tree', level: 1, xp: 14 },
+  { id: 'tree18', x: 127, y: 3, name: 'Tree', level: 1, xp: 14 },
+];
+
+const HUNT_SPOTS = [
+  { id: 'burrow1', x: 140, y: 81, name: 'Rabbit burrow', level: 1, xp: 20 },
+  { id: 'burrow2', x: 166, y: 83, name: 'Rabbit burrow', level: 1, xp: 20 },
+];
+
+const FARM_PATCHES = [
+  { id: 'farm1', x: 44, y: 51, name: 'Farm patch' },
+  { id: 'farm2', x: 46, y: 51, name: 'Farm patch' },
+  { id: 'farm3', x: 48, y: 51, name: 'Farm patch' },
+  { id: 'farm4', x: 57, y: 51, name: 'Farm patch' },
+  { id: 'farm5', x: 59, y: 51, name: 'Farm patch' },
+  { id: 'farm6', x: 61, y: 51, name: 'Farm patch' },
+];
+
+const SIGNPOSTS = [
+  { id: 'sign1', x: 96, y: 35, name: 'Road sign', text: 'Edit this signpost text.' },
+  { id: 'sign2', x: 94, y: 67, name: 'Road sign', text: 'Edit this signpost text.' },
+  { id: 'sign3', x: 98, y: 48, name: 'Road sign', text: 'Edit this signpost text.' },
+  { id: 'sign4', x: 73, y: 80, name: 'Road sign', text: 'Edit this signpost text.' },
+  { id: 'sign5', x: 117, y: 72, name: 'Road sign', text: 'Edit this signpost text.' },
+];
+
+const BARROW_TABLETS = [
+  { id: 'tablet1', x: 17, y: 75, name: 'Barrow tablet', text: 'Edit this inscription.' },
+  { id: 'tablet2', x: 22, y: 82, name: 'Barrow tablet', text: 'Edit this inscription.' },
+  { id: 'tablet3', x: 6, y: 82, name: 'Barrow tablet', text: 'Edit this inscription.' },
+];
+
+const PORTALS = [
+  { x: 9, y: 64, toX: 0, toY: 0, label: 'Portal — set toX/toY' },
+  { x: 6, y: 75, toX: 0, toY: 0, label: 'Portal — set toX/toY' },
+];
+
+const FORGE = { x: 104, y: 15, name: 'FORGE' };
+
+const ALTAR = { x: 49, y: 72, name: 'ALTAR' };
+
+const WORKBENCH = { x: 101, y: 15, name: 'WORKBENCH' };
+
+const CAULDRON = { x: 101, y: 82, name: 'CAULDRON' };
+
+const DUNGEON_CHEST = { x: 22, y: 86, name: 'Warden chest' };
+
+// NPC POSITIONS — update each NPC x/y in the NPCS array of data.js:
+//   elowen: (171, 40)
+//   king: (171, 20)
+//   yara: (171, 29)
+//   corvin: (183, 46)
+//   alaric: (174, 57)
+//   murphy: (147, 83)
+//   banker: (119, 11)
+//   rowan: (87, 67)
+//   tamsin: (104, 67)
+//   fen: (99, 74)
+//   mira: (50, 68)
+//   torren: (119, 67)
+//   bren: (136, 37)
+//   jory: (45, 52)
+//   nessa: (94, 73)
+//   willow: (111, 64)
+//   orin: (164, 65)
+//   maeve: (153, 74)
+//   vale: (12, 36)
+//   harker: (20, 11)
+//   mara: (88, 18)
+//   edric: (159, 85)
+//   sable: (10, 122)
+//   fenwick: (22, 114)
+//   kessa: (117, 67)
+//   pell: (102, 68)
