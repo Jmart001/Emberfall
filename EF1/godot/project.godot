@@ -45,3 +45,6 @@ toggle_debug_grid={
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+scaling_3d/mode="bilinear"
+scaling_3d/scale=1.0
+scaling_3d/scale.web=0.75
