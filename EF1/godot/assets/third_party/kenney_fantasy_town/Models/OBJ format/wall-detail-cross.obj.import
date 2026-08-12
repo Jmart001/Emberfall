@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://hnbypjtclw7l"
+path="res://.godot/imported/wall-detail-cross.obj-aca8bcec0fa4091b5eac71e6452cb794.mesh"
+
+[deps]
+
+files=["res://.godot/imported/wall-detail-cross.obj-aca8bcec0fa4091b5eac71e6452cb794.mesh"]
+
+source_file="res://assets/third_party/kenney_fantasy_town/Models/OBJ format/wall-detail-cross.obj"
+dest_files=["res://.godot/imported/wall-detail-cross.obj-aca8bcec0fa4091b5eac71e6452cb794.mesh", "res://.godot/imported/wall-detail-cross.obj-aca8bcec0fa4091b5eac71e6452cb794.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

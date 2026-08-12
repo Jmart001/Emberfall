@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bq6pe6iaywugh"
+path="res://.godot/imported/hedge-large.obj-4d0a628e98c89f3c23d7bbf5a1baadff.mesh"
+
+[deps]
+
+files=["res://.godot/imported/hedge-large.obj-4d0a628e98c89f3c23d7bbf5a1baadff.mesh"]
+
+source_file="res://assets/third_party/kenney_fantasy_town/Models/OBJ format/hedge-large.obj"
+dest_files=["res://.godot/imported/hedge-large.obj-4d0a628e98c89f3c23d7bbf5a1baadff.mesh", "res://.godot/imported/hedge-large.obj-4d0a628e98c89f3c23d7bbf5a1baadff.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false
